@@ -17,7 +17,7 @@ import qualified Data.Vector.Mutable     as MV
 
 import           Prelude  ()
 import qualified Prologue as P
-import           Prologue hiding ((*))
+import           Prologue hiding ((*), (+), sum)
 
 import Data.Convert
 import Data.Monoid (Sum(Sum), getSum)
@@ -51,9 +51,13 @@ type family TypeOf  (a :: * -> *)      :: *
 
 class IsArray f where array :: Iso (f t a) (f t' a') (Array (ShapeOf f) t a) (Array (ShapeOf f) t' a')
 
+-- TODO[WD]: Refactor - UnsafeIndex should be used from the containers library
+class UnsafeIndex f t where unsafeIndex :: Int -> f t a -> a
+
 -- utils
 shapeOf :: forall f t a. KnownNats (ShapeOf f) => f t a -> [Int]
 shapeOf _ = natLstVal (Proxy :: Proxy (ShapeOf f))
+
 
 -- array info instances
 type instance ShapeOf (Array shape)   = shape
@@ -61,6 +65,10 @@ type instance TypeOf  (Array shape t) = t
 
 -- math relations instances
 type instance ProductOf (Array sh t a) (Array sh t b) = Array sh t (ProductOf a b)
+
+instance (sh ~ sh', t ~ t', Mul a b, IsList (Array sh t a), IsList (Array sh t b), IsList (Array sh t (ProductOf a b)))
+      => Mul (Array sh t a) (Array sh' t' b) where
+    a * b = fromList $ (uncurry (*) <$> zip (toList a) (toList b))
 
 -- utils instances
 instance IsArray  (Array shape) where array = id
@@ -94,10 +102,13 @@ class Reshape sh f t where unsafeReshape :: Proxy sh -> f t a -> Reshaped sh f t
 -- TODO[WD]: make it more general - extractDim should be named focusDim and be an Lens'
 class ExtractDim (idx :: Nat) sh t where extractDim :: Proxy idx -> Array sh t a -> Array '[ElAt idx sh] t (Array (RemovedIdx idx sh) t a)
 
-cols :: (ExtractDim idx sh t, idx ~ 0) => Array sh t a -> Array '[ElAt idx sh] t (Array (RemovedIdx idx sh) t a)
+type ExtractRows = ExtractDim 1
+type ExtractCols = ExtractDim 0
+
+cols :: (ExtractCols sh t, idx ~ 0) => Array sh t a -> Array '[ElAt idx sh] t (Array (RemovedIdx idx sh) t a)
 cols = extractDim (Proxy :: Proxy (0 :: Nat))
 
-rows :: (ExtractDim idx sh t, idx ~ 1) => Array sh t a -> Array '[ElAt idx sh] t (Array (RemovedIdx idx sh) t a)
+rows :: (ExtractRows sh t, idx ~ 1) => Array sh t a -> Array '[ElAt idx sh] t (Array (RemovedIdx idx sh) t a)
 rows = extractDim (Proxy :: Proxy (1 :: Nat))
 
 
@@ -131,10 +142,46 @@ newtype Matrix (width :: Nat) (height :: Nat) t a = Matrix (Array '[width, heigh
 type instance ShapeOf (Matrix w h)   = '[w,h]
 type instance TypeOf  (Matrix w h t) = t
 
--- class instances
+-- derivings
 
 deriving instance Show    (Array '[w,h] t a) => Show    (Matrix w h t a)
 deriving instance Functor (Array '[w,h] t)   => Functor (Matrix w h t)
+
+-- math relations instances
+
+type instance ProductOf (Matrix w h t a) (Matrix w' h' t b) = Matrix w' h t (ProductOf a b)
+
+instance ( w ~ h', t ~ t', Mul a b, IsList (Matrix w h t a), IsList (Matrix w' h' t' b), IsList (Matrix w' h t c)
+         , ExtractRows '[w ,h ] t 
+         , ExtractCols '[w',h'] t'
+         , Generated (Matrix w' h) t
+         , UnsafeIndex (Array '[w']) t'
+         , IsList (Array '[h'] t' b)
+         , UnsafeIndex (Array '[h]) t
+         , IsList (Array '[w] t a)
+         , c ~ (ProductOf a b)
+         , Add c c
+         , SumOf c c ~ c
+         , Num c
+         )
+      => Mul (Matrix w h t a) (Matrix w' h' t' b) where
+    m * m' = generate (\[x,y] -> gen x y) where
+        a       = view array m
+        a'      = view array m'
+        rs      = rows a
+        cs      = cols a'
+        gen x y = sum (uncurry (*) <$> zip row col) where
+            col = toList $ unsafeIndex x cs
+            row = toList $ unsafeIndex y rs
+
+
+--sum :: (Foldable t, Add a a, SumOf a a ~ a, Num a) => t a -> a
+
+
+--generate :: Generated f t => ([Int] -> a) -> f t a
+--generate = generate' . const
+
+-- utils instances
 
 instance IsArray (Matrix w h) where array = polyWrapped
 
@@ -142,7 +189,6 @@ instance Rewrapped (Matrix w h t a) (Matrix w h t' a')
 instance Wrapped   (Matrix w h t a) where
     type Unwrapped (Matrix w h t a) = Array '[w, h] t a
     _Wrapped' = iso (\(Matrix a) -> a) Matrix
-
 
 instance (IsList d, Monoid (Item d), KnownNats '[w,h], d ~ Unwrapped (Matrix w h t a))
       => Monoid (Matrix w h t a) where
@@ -153,6 +199,8 @@ instance IsList (Unwrapped (Matrix w h t a)) => IsList (Matrix w h t a) where
     type Item (Matrix w h t a) = Item (Unwrapped (Matrix w h t a))
     fromList = view unwrapped . fromList
     toList   = toList . view wrapped
+
+
 
 
 -----------------------------------------------------------------------
@@ -349,6 +397,8 @@ instance IsList' (Array sh Boxed a) where
     toList'   = toList . view wrapped
 
 
+instance UnsafeIndex (Array sh) Boxed where
+    unsafeIndex idx = flip V.unsafeIndex idx . view wrapped
 
 
 -- TODO[WD]: make it more general, suitable for processing arbitrary dimension arrays
@@ -389,21 +439,59 @@ prettyPrint a = mapM_ print $ chunksOf w $ toList a where
 
 ---
 
+
+
+
+
+
 type family ProductOf a b
 type HomoProductOf a = ProductOf a a
 
-type instance ProductOf Int    Int    = Int
-type instance ProductOf Float  Float  = Float
-type instance ProductOf Double Double = Double
-
+infixl 7 *
 class Mul a b where (*) :: a -> b -> ProductOf a b
+                    default (*) :: (Num a, a ~ b, a ~ HomoProductOf a) => a -> b -> ProductOf a b
+                    (*) = (P.*) 
 
-instance {-# OVERLAPPABLE #-} (Num a, a ~ b, a ~ HomoProductOf a) => Mul a b where (*) = (P.*)  
+
+type family SumOf a b
+type HomoSumOf a = SumOf a a
+
+infixl 7 +
+class Add a b where (+) :: a -> b -> SumOf a b
+                    default (+) :: (Num a, a ~ b, a ~ HomoSumOf a) => a -> b -> SumOf a b
+                    (+) = (P.+) 
+
+sum :: (Foldable t, Add a a, SumOf a a ~ a, Num a) => t a -> a
+sum = foldl (+) 0
+
+type instance ProductOf Int Int = Int
+instance      Mul       Int Int
+
+type instance ProductOf Float Float = Float
+instance      Mul       Float Float
+
+type instance ProductOf Double Double = Double
+instance      Mul       Double Double
+
+---
+
+type instance SumOf Int Int = Int
+instance      Add   Int Int
+
+type instance SumOf Float Float = Float
+instance      Add   Float Float
+
+type instance SumOf Double Double = Double
+instance      Add   Double Double
+
+--instance {-# OVERLAPPABLE #-} (Num a, a ~ b, a ~ HomoProductOf a) => Mul a b where (*) = (P.*)  
 
 
-instance (sh ~ sh', t ~ t', Mul a b, IsList (Array sh t a), IsList (Array sh t b), IsList (Array sh t (ProductOf a b)))
-      => Mul (Array sh t a) (Array sh' t' b) where
-    a * b = fromList $ (uncurry (*) <$> zip (toList a) (toList b))
+
+
+--instance (sh ~ sh', t ~ t', Mul a b, IsList (Array sh t a), IsList (Array sh t b), IsList (Array sh t (ProductOf a b)))
+--      => Mul (Array sh t a) (Array sh' t' b) where
+--    a * b = fromList $ (uncurry (*) <$> zip (toList a) (toList b))
 
 
 main = do 
@@ -415,8 +503,10 @@ main = do
         --m = mempty :: Quaternion Boxed Int
         --v = fmap getSum (mempty :: Vector 2 Boxed (Sum Int))
 
-        m1 = diagonal 1 0 :: Matrix 2 4 Boxed Int
-        m2 = constant 5   :: Matrix 2 4 Boxed Int
+        --m1 = diagonal 1 0 :: Matrix 4 4 Boxed Int
+        m1 = fromList [1,2,3,4] :: Matrix 2 2 Boxed Int
+        m2 = fromList [5,6,7,8] :: Matrix 2 2 Boxed Int
+        --m2 = constant 5   :: Matrix 4 4 Boxed Int
 
         v = fromList [1,2,3] :: Vector 3 Boxed Int --  (mempty :: Vector 2 Boxed (Sum Int))
 
@@ -429,6 +519,7 @@ main = do
     prettyPrint $ m2
     print ""
     prettyPrint $ m1 * m2
+
 
     --mapM_ print $ toList $ rows m
     --print ""
