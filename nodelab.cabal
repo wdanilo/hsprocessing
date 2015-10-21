@@ -1,0 +1,57 @@
+name:                nodelab
+version:             0.1.0.0
+synopsis:            NodeLab
+homepage:            www.nodelab.io
+author:              New Byte Order
+maintainer:          contact@nodelab.io
+category:            drag and drop test, all reactive
+build-type:          Simple
+cabal-version:       >=1.22
+
+executable nodelab
+  main-is:             Main.hs
+  default-extensions:   DoAndIfThenElse
+                      , TemplateHaskell
+                      , DeriveGeneric
+                      , StandaloneDeriving
+                      , FlexibleContexts
+                      , MultiParamTypeClasses
+                      , DefaultSignatures
+                      , DeriveFunctor
+                      , DeriveTraversable
+                      , DeriveFoldable
+                      , FlexibleInstances
+                      , LambdaCase
+                      , ConstraintKinds
+                      , GeneralizedNewtypeDeriving
+                      , DeriveDataTypeable
+                      , ScopedTypeVariables
+
+  other-modules:     Language.GLSL.Builder
+                     Data.Array.Repa.Matrix
+                     Data.Vector.Matrix
+
+  build-depends:       base >= 4.8 && < 4.9
+                     , ghcjs-base
+                     , ghcjs-dom >=0.2 && <0.3
+                     , ghcjs-prim
+                     , jsaddle
+                     , lens
+                     , mtl
+                     , transformers
+                     , algebraic
+                     , prologue
+                     , language-glsl
+                     , parsec
+                     , template-haskell
+                     , convert
+                     , prettyclass
+                     , repa
+                     , repa-algorithms
+                     , vector 
+                     , data-rtuple
+                     , typelevel
+                     , split
+                     
+  hs-source-dirs:      src
+  default-language:    Haskell2010
