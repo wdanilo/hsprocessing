@@ -240,6 +240,8 @@ instance IsList (Unwrapped (XForm dim t a)) => IsList (XForm dim t a) where
 
 newtype Vector (dim   :: Nat) t a = Vector (Array '[dim] t a)
 
+type BVec dim = Vector dim Boxed
+
 type instance ShapeOf (Vector dim)   = '[dim]
 type instance TypeOf  (Vector dim t) = t
 

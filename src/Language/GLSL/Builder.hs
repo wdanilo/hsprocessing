@@ -31,7 +31,7 @@ import           GHC.TypeLits
 --import           Data.Array.Repa.Matrix (Matrix, Quaternion)
 --import qualified Data.Array.Repa.Matrix as Mx
 
---import qualified Data.Vector as V
+import qualified Data.Vector as V
 
 --import qualified Data.Vector.Unboxed as VU
 --import qualified Data.Array.Repa.Repr.Vector as Repa
@@ -155,123 +155,7 @@ type family Replicate (num :: Nat) a :: [*] where Replicate 0 a = '[]
                                                   Replicate n a = (a ': Replicate (n-1) a)
 
 
---data Layout_RTuple = Layout_RTuple deriving (Show)
 
---type family VLayout style (dim :: Nat) a
---type instance VLayout Layout_RTuple dim a = VecData dim a
-
---newtype Linear (dim :: Nat) a = Linear (VLayout Layout_RTuple dim a)
-
-
---type VecData dim a = AsRTuple (Replicate dim a)
-type VecData dim a = AsTList a (Replicate dim a)
-
-
---newtype Linear (dim :: Nat) a = Linear (VecData dim a)
-
---deriving instance Show (VecData dim a) => Show (Linear dim a)
-
-data Vec (dim :: Nat) a = Vec {fromVec :: V.Vector a} deriving (Show)
-
-data Vec' (dim :: Nat) a = Vec' (Array Repa.V DIM1 a)
-
---data instance Vec 0 a = V0 deriving (Show)
---data instance Vec 1 a = V1 !a deriving (Show)
---data instance Vec 2 a = V2 !a !a deriving (Show)
---data instance Vec 3 a = V3 !a !a !a deriving (Show)
-
-
---newtype Vec (dim :: Nat) a = Vec (VecData dim a)
-
-instance Wrapped (Vec dim a) where
-    type Unwrapped (Vec dim a) = V.Vector a
-    _Wrapped' = iso (\(Vec a) -> a) Vec
-
-
-instance Wrapped (Vec' dim a) where
-    type Unwrapped (Vec' dim a) = Array Repa.V DIM1 a
-    _Wrapped' = iso (\(Vec' a) -> a) Vec'
-
-
---type Expr_V (dim :: Nat) = V dim Expr
-
-
---newtype Vec dim a = Vec (V dim (Linear dim a))
-
---deriving instance Show (VecData dim a) => Show (Vec dim a)
-
-
---type family NatElem (n :: Nat) a
---type instance NatElem 0 (RTuple (r,rs)) = r
---type instance NatElem n (RTuple (r,rs)) = NatElem (n-1) (RTuple rs)
-
-
---class NatIdx (n :: Nat) 
-
-
-unsafeAt :: Int -> Lens' (V.Vector a) a
-unsafeAt i = lens (flip V.unsafeIndex i) undefined
-
-unsafeRepaAt :: Int -> Lens' (Array Repa.V DIM1 a) a
-unsafeRepaAt i = lens (\v -> v Repa.! (Z :. i)) (\v a -> (\v' -> Repa.fromVector (Z:.(V.length v')) v') $ V.unsafeUpd (Repa.toVector v) [(i,a)])
---unsafeRepaAt i = lens (\v -> v Repa.! (Z :. i)) (\v a -> Repa.fromUnboxed $ VU.unsafeUpd (Repa.toUnboxed v) [(i,a)])
-
-class Dim1 (t :: Nat -> * -> *) d where x   :: Lens' (t d a) a
-class Dim1 t d => Dim2 t        d where y   :: Lens' (t d a) a
-                                        yx  :: Lens' (t d a) (t 2 a)
-                                        xy  :: Lens' (t d a) (t 2 a)
-class Dim2 t d => Dim3 t        d where z   :: Lens' (t d a) a
-                                        zx  :: Lens' (t d a) (t 2 a)
-                                        xz  :: Lens' (t d a) (t 2 a)
-                                        zy  :: Lens' (t d a) (t 2 a)
-                                        yz  :: Lens' (t d a) (t 2 a)
-                                        xyz :: Lens' (t d a) (t 3 a)
-
-
-
-
-class CheckDim (min :: Nat) (dim :: Nat) 
-instance CheckDim min dim -- FIXME: TODO
-
-instance CheckDim 1 dim => Dim1 Vec dim where x = wrapped . unsafeAt 0
-instance CheckDim 2 dim => Dim2 Vec dim where y = wrapped . unsafeAt 1
-instance CheckDim 3 dim => Dim3 Vec dim where z = wrapped . unsafeAt 2
-
-instance CheckDim 1 dim => Dim1 Vec' dim where x = wrapped . unsafeRepaAt 0
-instance CheckDim 2 dim => Dim2 Vec' dim where y = wrapped . unsafeRepaAt 1
-instance CheckDim 3 dim => Dim3 Vec' dim where z = wrapped . unsafeRepaAt 2
-
-
---instance CheckDim 1 dim => Dim1 Vec' dim where x = wrapped . unsafeRepaAt 0
-
-
---instance 
-
-type family ElemsType a
-
-class                                      Elems t el where elems :: t -> [el]
-
-instance                                   Elems (RTuple ())      el where elems _             = []
-instance (t ~ el, Elems (RTuple ts) el) => Elems (RTuple (t,ts))  el where elems (RTuple (t,ts)) = t : elems (RTuple ts)
-
-instance                                          Elems (TList x ())      el where elems _              = []
-instance (t ~ el, x ~ t, Elems (TList x ts) el)  => Elems (TList x (t,ts))  el where elems (TList (t,ts)) = t : elems (TList ts :: TList x ts)
-
-
-
---instance (el ~ a, Elems (VecData dim a) a) => Elems (Linear dim a) el where elems (Linear a) = elems a
-
---instance Elems a el                         => Elems (V dim a)      el where elems (V a)      = elems a
---instance (el ~ a, Elems (VecData dim a) a) => Elems (Vec dim a) el where elems (Vec a) = elems a 
-
---type family ElementOf a
-
---type instance ElementOf (RTuple )
-
---type family Attrib a
-
-
---type family DataOf Position t = DataOf PositionOf t (UnitOf t)
 
 data R (dim :: Nat) = R deriving (Show)
 
@@ -294,7 +178,7 @@ type family DimOf a :: Nat
 type instance DimOf (RTuple ()) = 0
 type instance DimOf (RTuple (a,as)) = 1 + DimOf (RTuple as)
 
-type instance CoordsOf (Cartesian dim) = Vec dim 
+type instance CoordsOf (Cartesian dim) = A.BVec dim 
 
 type SpaceCoordsOf t = CoordsOf (SpaceOf t)
 
@@ -330,22 +214,26 @@ ball r p = ("sdf_ball" [convert p, convert r] :: Expr)
 
 
 --v :: _ => _
-v = vec3_ 1 2 3 :: Vec 3 Float
+v = fromList [1, 2, 3] :: A.BVec 3 Float
 
 --linear :: (VecData dim a ~ RTuple t, dim ~ DimOf (RTuple t)) => RTuple t -> Linear dim a 
 --linear = Linear
 
 v' = convert v :: Expr
 
-instance (Convertible a Expr, KnownNat dim) => Convertible (Vec dim a) Expr where
-    convert v = fromString ("vec" <> show (natVal (Proxy :: Proxy dim))) $ fmap convert $ V.toList $ fromVec v
+instance (Convertible a Expr, KnownNat dim) => Convertible (A.BVec dim a) Expr where
+    convert v = fromString ("vec" <> show (natVal (Proxy :: Proxy dim))) $ fmap convert $ toList v
 
 
+vec0_ :: A.BVec 0 t
+vec1_ :: t -> A.BVec 1 t
+vec2_ :: t -> t -> A.BVec 2 t
+vec3_ :: t -> t -> t -> A.BVec 3 t
 
-vec0_ = Vec $ V.fromList []
-vec1_ t1 = Vec $ V.fromList [t1]
-vec2_ t1 t2 = Vec $ V.fromList [t1,t2]
-vec3_ t1 t2 t3 = Vec $ V.fromList [t1,t2,t3]
+vec0_          = fromList []
+vec1_ t1       = fromList [t1]
+vec2_ t1 t2    = fromList [t1,t2]
+vec3_ t1 t2 t3 = fromList [t1,t2,t3]
 
 
 
@@ -407,7 +295,7 @@ data Shape space a = Shape XForm Style (SDF space a)
 b1 = Shape XForm Style (sdf $ Ball 100.0)
 
 
-magicPosV2 :: Vec 2 Expr
+magicPosV2 :: A.BVec 2 Expr
 magicPosV2 = vec2_ ("p" .> "x") ("p" .> "y")
 
 buildGLSL :: Shape (Cartesian 2) Expr -> Expr
