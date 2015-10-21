@@ -22,21 +22,21 @@ import           GHC.TypeLits                   (Nat)
 import qualified Control.Monad.State           as State
 import           GHC.TypeLits
 
-import qualified Data.Array.Repa as Repa
-import           Data.Array.Repa hiding (Shape)
-import qualified Data.Array.Repa.Matrix as Repa
-import qualified Data.Array.Repa.Repr.Unboxed as Repa
+--import qualified Data.Array.Repa as Repa
+--import           Data.Array.Repa hiding (Shape)
+--import qualified Data.Array.Repa.Matrix as Repa
+--import qualified Data.Array.Repa.Repr.Unboxed as Repa
 
-import           Data.Vector.Unboxed (Unbox)
-import           Data.Array.Repa.Matrix (Matrix, Quaternion)
-import qualified Data.Array.Repa.Matrix as Mx
+--import           Data.Vector.Unboxed (Unbox)
+--import           Data.Array.Repa.Matrix (Matrix, Quaternion)
+--import qualified Data.Array.Repa.Matrix as Mx
 
-import qualified Data.Vector as V
+--import qualified Data.Vector as V
 
-import qualified Data.Vector.Unboxed as VU
-import qualified Data.Array.Repa.Repr.Vector as Repa
+--import qualified Data.Vector.Unboxed as VU
+--import qualified Data.Array.Repa.Repr.Vector as Repa
 
-import qualified Data.Vector.Matrix as MM
+import qualified Data.Array.Linear as A
 
 import Data.RTuple
 
@@ -347,17 +347,7 @@ vec1_ t1 = Vec $ V.fromList [t1]
 vec2_ t1 t2 = Vec $ V.fromList [t1,t2]
 vec3_ t1 t2 t3 = Vec $ V.fromList [t1,t2,t3]
 
-vec0' :: Vec' 0 a
-vec0'       = Vec' $ Repa.fromListVector (Z :. 0) []
 
-vec1' :: a -> Vec' 1 a
-vec1' x     = Vec' $ Repa.fromListVector (Z :. 1) [x]
-
-vec2' :: a -> a -> Vec' 2 a
-vec2' x y   = Vec' $ Repa.fromListVector (Z :. 2) [x,y]
-
-vec3' :: a -> a -> a -> Vec' 3 a
-vec3' x y z = Vec' $ Repa.fromListVector (Z :. 3) [x,y,z]
 
 ----------------------------------------------------
 
@@ -376,26 +366,11 @@ data XFormed     s a = XFormed     [s]   a deriving (Show, Functor) -- [s] => ma
 --data XForm = XForm deriving (Show)
 data Style = Style deriving (Show)
 
-type XForm = Quaternion Float
+data XForm = XForm
+--type XForm = Quaternion Float
 
-quaternion :: Unbox a => [a] -> Array U DIM2 a
-quaternion = fromListUnboxed (Z :. 4 :. 4)
 
---identity = XForm $ quaternion 
---    [ 1,0,0,0
---    , 0,1,0,0
---    , 0,0,1,0
---    , 0,0,0,1
---    ]
-
---translation x y z = XForm $ quaternion 
---    [ 1,0,0,0
---    , 0,1,0,0
---    , 0,0,1,0
---    , x,y,z,1
---    ]
-
-class HasXForm a where xform :: Lens' a XForm
+--class HasXForm a where xform :: Lens' a XForm
 
 --translate :: 
 --translate x y z a = Repa.mmultS 
@@ -429,7 +404,7 @@ ball_sdf r = SDF $ \p -> ("sdf_ball" [convert p, convert r] :: Expr)
 
 data Shape space a = Shape XForm Style (SDF space a) 
 
-b1 = Shape mempty Style (sdf $ Ball 100.0)
+b1 = Shape XForm Style (sdf $ Ball 100.0)
 
 
 magicPosV2 :: Vec 2 Expr
@@ -439,7 +414,6 @@ buildGLSL :: Shape (Cartesian 2) Expr -> Expr
 buildGLSL (Shape _ _ sdf) = runSDF sdf magicPosV2
 
 
-repaTest = fromListUnboxed (Z :. 3 :. 5) [1..15] :: Array U DIM2 Int
 
 
 
@@ -475,15 +449,12 @@ main = do
                   ]
 
     let pps = prettyShow s1
-    print repaTest
-    print $ repaTest ! (Z:.2:.1)
 
 
-    let myv = vec3' 7 2 3 :: Vec' 3 Float
-    let myvE = vec1' "oh" :: Vec' 1 Expr
-    print $ myv ^. x
+    --let myv = vec3' 7 2 3 :: Vec' 3 Float
+    --let myvE = vec1' "oh" :: Vec' 1 Expr
+    --print $ myv ^. x
 
-    MM.main
     return pps
 
 --instance Unbox Expr

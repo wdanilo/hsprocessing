@@ -8,7 +8,7 @@
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE RankNTypes #-}
 
-module Data.Vector.Matrix where
+module Data.Array.Linear where
 
 --import Data.Vector
 

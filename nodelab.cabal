@@ -28,8 +28,7 @@ executable nodelab
                       , ScopedTypeVariables
 
   other-modules:     Language.GLSL.Builder
-                     Data.Array.Repa.Matrix
-                     Data.Vector.Matrix
+                     Data.Array.Linear
 
   build-depends:       base >= 4.8 && < 4.9
                      , ghcjs-base
