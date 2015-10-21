@@ -210,6 +210,21 @@ instance IsList (Unwrapped (Matrix w h t a)) => IsList (Matrix w h t a) where
 newtype XForm (dim :: Nat) t a = XForm (Matrix dim dim t a)
 type    Quaternion             = XForm 4
 
+type BQuaternion = Quaternion Boxed
+
+-- utils
+
+translation :: (Dim3 (Vector 3) t, IsList' (Array '[4, 4] t a), Num a)
+            => Vector 3 t a -> Quaternion t a
+translation v = fromList [ 1 ,0 ,0 ,0
+                         , 0 ,1 ,0 ,0
+                         , 0 ,0 ,1 ,0
+                         , vx,vy,vz,1
+                         ] 
+    where vx = v ^. x
+          vy = v ^. y
+          vz = v ^. z
+
 -- class instances
 
 type instance ShapeOf (XForm dim)   = '[dim,dim]
@@ -244,6 +259,9 @@ type BVec dim = Vector dim Boxed
 
 type instance ShapeOf (Vector dim)   = '[dim]
 type instance TypeOf  (Vector dim t) = t
+
+--class IsVector a where
+--    vector :: 
 
 -- class instances
 

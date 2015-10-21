@@ -29,6 +29,7 @@ executable nodelab
 
   other-modules:     Language.GLSL.Builder
                      Data.Array.Linear
+                     Data.Array.Linear.Color
 
   build-depends:       base >= 4.8 && < 4.9
                      , ghcjs-base

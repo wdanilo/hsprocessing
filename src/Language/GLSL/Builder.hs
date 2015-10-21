@@ -21,6 +21,8 @@ import           Data.Convert
 import           GHC.TypeLits                   (Nat)
 import qualified Control.Monad.State           as State
 import           GHC.TypeLits
+import           Control.Monad.State           (State, runState, evalState, execState, get, put)
+import           Data.Array.Linear.Color
 
 --import qualified Data.Array.Repa as Repa
 --import           Data.Array.Repa hiding (Shape)
@@ -67,7 +69,7 @@ app name params = FunctionCall (FuncId name) (Params params)
 func tp name args body = FunctionDefinition (FuncProt (FullType Nothing tp) name args) (Compound body)
 func' = func void
 
-val tp name expr = DeclarationStatement (InitDeclaration (TypeDeclarator (FullType Nothing tp))  [ InitDecl name Nothing (Just expr) ])
+val tp (Variable name) expr = DeclarationStatement (InitDeclaration (TypeDeclarator (FullType Nothing tp))  [ InitDecl name Nothing (Just expr) ])
 
 
 a .> fields = FieldSelection a fields
@@ -191,8 +193,8 @@ type Cartesian dim = Space (R dim) Space_Type_Cartesian
 
 
 
-class HasPosition t where
-    position :: Lens' (t a) (SpaceCoordsOf t a)
+--class HasPosition t where
+--    position :: Lens' (t a) (SpaceCoordsOf t a)
 
 
 
@@ -205,8 +207,8 @@ type family Attrib a (t :: * -> *) :: *
 
 type family UnitOfM (m :: * -> *) :: *
 
-class Provides d m where
-    get :: d -> Attrib d m
+--class Provides d m where
+--    get :: d -> Attrib d m
 
 
 --ball :: _ => _
@@ -242,26 +244,35 @@ vec3_ t1 t2 t3 = fromList [t1,t2,t3]
 data family Tx (dim :: Nat) a
 
 
-data RGB   = RGB Float Float Float deriving (Show)
+--data RGB   = RGB Float Float Float deriving (Show)
 
-data Color = Color deriving (Show)
 
-data Colored       a = Colored     RGB   a deriving (Show, Functor)
+data Material = Solid (Color RGB Float) deriving (Show)
+           -- | Gradient
+
+--data Colored       a = Colored     RGB   a deriving (Show, Functor)
 data Bounded     s a = Bounded     s     a deriving (Show, Functor)
 data XFormed     s a = XFormed     [s]   a deriving (Show, Functor) -- [s] => mat4 / mat3 s
 
 
 --data XForm = XForm deriving (Show)
-data Style = Style deriving (Show)
+data Style = Style { _fill_s :: Maybe Material } deriving (Show)
 
-data XForm = XForm
+makeLenses ''Style
+
+instance Default Style where
+    def = Style def
+
+--data XForm = XForm
 --type XForm = Quaternion Float
 
 
 --class HasXForm a where xform :: Lens' a XForm
 
---translate :: 
+--translate :: A.BVec 3 a 
 --translate x y z a = Repa.mmultS 
+
+
 
 
 
@@ -290,50 +301,122 @@ ball_sdf :: Convertible a Expr => a -> SDF (Cartesian 2) Expr
 ball_sdf r = SDF $ \p -> ("sdf_ball" [convert p, convert r] :: Expr)
 
 
-data Shape space a = Shape XForm Style (SDF space a) 
+data Shape space a = Shape (A.BQuaternion a) Style (SDF space a) 
+                   | Merge (Shape space a) (Shape space a)
+                   | Diff  (Shape space a) (Shape space a)
 
-b1 = Shape XForm Style (sdf $ Ball 100.0)
+--s1 = Style (Just $ Solid $ fromList )
+b1 :: Shape (Cartesian 2) Expr
+b1 = Shape mempty def (sdf $ Ball 100.0)
 
 
 magicPosV2 :: A.BVec 2 Expr
 magicPosV2 = vec2_ ("p" .> "x") ("p" .> "y")
 
-buildGLSL :: Shape (Cartesian 2) Expr -> Expr
-buildGLSL (Shape _ _ sdf) = runSDF sdf magicPosV2
 
 
 
+--buildGLSL :: Shape (Cartesian 2) Expr -> Expr
+--buildGLSL (Shape xform style sdf) = runSDF sdf magicPosV2
 
+
+data StdUniforms = StdUniforms { _position :: A.BVec 2 Expr 
+                               , _color    :: Expr
+                               } deriving (Show)
+makeLenses ''StdUniforms
+
+data GLSLState = GLSLState { _stdUniforms :: StdUniforms
+                           , _names       :: [String] 
+                           } deriving (Show)
+makeLenses ''GLSLState
+
+instance Monoid StdUniforms where
+    mempty = StdUniforms { _position = vec2_ ("p" .> "x") ("p" .> "y")
+                         , _color    = "gl_FragColor"
+                         }
+
+instance Monoid GLSLState where
+    mempty = GLSLState mempty ((\s -> ("_" <> s <> "_")) .: flip (:) <$> fmap show [0..] <*> ['a' .. 'z'])
+
+class Monad m => MonadGLSL m where
+    getState :: m GLSLState
+    putState :: GLSLState -> m ()
+
+instance MonadGLSL (State GLSLState) where
+    getState = get
+    putState = put
+
+genName' :: MonadGLSL m => m String
+genName' = do
+    s <- getState
+    let (n:ns) = view names s
+    putState (s & names .~ ns)
+    return n
+
+genName :: MonadGLSL m => m Expr
+genName = fromString <$> genName'
+
+newName' :: MonadGLSL m => String -> m String
+newName' pfx = (pfx <>) <$> genName'
+
+newName :: MonadGLSL m => String -> m Expr
+newName pfx = fromString <$> newName' pfx
+
+getStdUniforms = view stdUniforms <$> getState
+
+getPosition = view position <$> getStdUniforms 
+getColor    = view color    <$> getStdUniforms 
+
+---------------------
+
+class GLSLBuilder t m where
+    buildGLSL :: t -> m [Statement]
+
+
+instance MonadGLSL m => GLSLBuilder (Shape (Cartesian 2) Expr) m where
+    buildGLSL (Shape xform style sdf) = do
+        
+        p      <- getPosition
+        g      <- newName "sdf"
+        fill   <- newName "fill"
+        border <- newName "border"
+        shadow <- newName "shadow"
+        color  <- getColor
+
+        let fillStat = case style ^. fill_s of
+                Nothing -> []
+                Just i  -> [ val vec4 fill $ "vec4" [1.0,0.4,0.0, "sdf_aa"[g]]
+                           , color .= "vec4" ["mix" [color .> "rgb", fill .> "rgb", fill .> "a"], 1.0]
+                           ]
+
+        return $ [ val float g $ runSDF sdf p
+                 -- , val vec4  fill    $ "vec4" [1.0,0.4,0.0, "sdf_aa"[g]]
+                 , val vec4  border  $ "vec4" [1.0,1.0,1.0, "sdf_aa"["sdf_borderOut" [10.0, g]]]
+                 , val vec4  shadow  $ "sdf_shadow" [g-10.0, 20.0, 0.2, 2.0]
+                 , color .= "vec4" [0.1,0.1,0.1,1.0]
+                 , color .= "vec4" ["mix" [color .> "rgb", shadow .> "rgb", shadow .> "a"], 1.0] 
+                 , color .= "vec4" ["mix" [color .> "rgb","gradient_hsv" ["cartesian2polar"["translate"["p","vec2"[100.0,100.0]]],10.0], border .> "a"], 1.0] 
+                 -- , color .= "vec4" ["mix" [color .> "rgb", fill .> "rgb", fill .> "a"], 1.0] 
+                 ] <> fillStat
 
 
 main = do
 
-    let gExpr = buildGLSL b1
+    let gExpr = flip evalState (mempty :: GLSLState) $ buildGLSL b1
 
     let local  = "local"
         dpr    = "dpr"
-        s1 = unit [   func' "main" [ param void ] [ val vec3 "local"  $ "world" - "origin" 
-                                                  , val vec3 "ulocal" $ "local" * "dpr"
-
-                                                  --, val mat4 "xform" $ "mat4" $ fmap convert $ Repa.toList mx1
-                                                  --, val vec4 "ulocal2" $ ("xform" * ("vec4" [0.0, "ulocal"]))
-                                                  --, "ulocal" .= ("ulocal2" .> "xyz")
-
-                                                  , val vec2 "p"      $ "ulocal" .> "xy"
-                                                  , val vec2 "c"      $ ("dim" .> "xy") / 2.0
-                                                  , val vec2 "z"      $ "p" / ("dim" .> "xy")
-
-                                                  , val float "g" gExpr
-                                                  -- , val float "g"     $ "sdf_circle" ["translate" ["p", "vec2" [150,160]], 60.0, 60.0]
-                                                  , val vec4  "l1"    $ "vec4" [1.0,0.4,0.0, "sdf_aa"["g"]]
-                                                  , val vec4  "l2"    $ "vec4" [1.0,1.0,1.0, "sdf_aa"["g" - 10.0]]
-                                                  , val vec4  "l3"    $ "sdf_shadow" ["g"-10.0, 20.0, 0.2, 2.0]
-
-                                                  , "gl_FragColor" .= "vec4" [0.1,0.1,0.1,1.0]
-                                                  , "gl_FragColor" .= "vec4" ["mix" ["gl_FragColor" .> "rgb", "l3" .> "rgb", "l3" .> "a"], 1.0] 
-                                                  , "gl_FragColor" .= "vec4" ["mix" ["gl_FragColor" .> "rgb","gradient_hsv" ["cartesian2polar"["translate"["p","vec2"[100.0,100.0]]],10.0], "l2" .> "a"], 1.0] 
-                                                  , "gl_FragColor" .= "vec4" ["mix" ["gl_FragColor" .> "rgb", "l1" .> "rgb", "l1" .> "a"], 1.0] 
-                                                  ]
+        s1 = unit [   func' "main" [ param void ] $ [ val vec3 "local"  $ "world" - "origin" 
+                                                    , val vec3 "ulocal" $ "local" * "dpr"
+                                                    --, val mat4 "xform" $ "mat4" $ fmap convert $ Repa.toList mx1
+                                                    --, val vec4 "ulocal2" $ ("xform" * ("vec4" [0.0, "ulocal"]))
+                                                    --, "ulocal" .= ("ulocal2" .> "xyz")
+                                                    -- , val float "g"     $ "sdf_circle" ["translate" ["p", "vec2" [150,160]], 60.0, 60.0]
+                                                    , val vec2 "p"      $ ("ulocal" .> "xy") - ("vec2" [150.0,150.0])
+                                                    , val vec2 "c"      $ ("dim" .> "xy") / 2.0
+                                                    , val vec2 "z"      $ "p" / ("dim" .> "xy")
+                                                    
+                                                    ] <> gExpr 
                   ]
 
     let pps = prettyShow s1
