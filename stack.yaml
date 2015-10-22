@@ -8,17 +8,15 @@ setup-info:
 
 packages:
   - .
-  - /Users/wdanilo/dev/hs/libs/algebraic
-  - /Users/wdanilo/dev/hs/libs/codebuilder
-  - /Users/wdanilo/dev/hs/libs/convert
-  - /Users/wdanilo/dev/hs/libs/data-repr
-  - /Users/wdanilo/dev/hs/libs/prologue
-  - /Users/wdanilo/dev/hs/libs/data-rtuple
-  - /Users/wdanilo/dev/hs/libs/typelevel
-
   - third-party/jsaddle
+  - location:
+      git:    https://github.com/wdanilo/data-repr.git
+      commit: fee67719dd0b38d30dababd9aeb63a1f60aaabb4
 
 extra-deps:
+  - prologue-1.0
+  - convert-1.0
+  - typelevel-1.0.1
   - ghcjs-dom-0.2.2.0
   - StateVar-1.1.0.1
   - adjunctions-4.2.2
@@ -44,7 +42,6 @@ extra-deps:
   - void-0.7.1
   - jsaddle-0.2.2.0
   - algebraic-0.1.1
-  - prologue-1.0
   - transformers-base-0.4.4
   - data-default-0.5.3
   - data-default-class-0.0.1
