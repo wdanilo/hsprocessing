@@ -8,19 +8,21 @@ setup-info:
 
 packages:
   - .
-  - /Users/wdanilo/dev/hs/libs/algebraic
-  - /Users/wdanilo/dev/hs/libs/codebuilder
-  - /Users/wdanilo/dev/hs/libs/convert
-  - /Users/wdanilo/dev/hs/libs/data-repr
-  - /Users/wdanilo/dev/hs/libs/prologue
-  - /Users/wdanilo/dev/hs/libs/data-rtuple
-  - /Users/wdanilo/dev/hs/libs/typelevel
-  - /Users/wdanilo/dev/hs/libs/jsaddle
+  - location:
+      git:    https://github.com/wdanilo/jsaddle.git
+      commit: 073347ddd698e4c7b45addc17edd29c086f0fb96
+  - location:
+      git:    https://github.com/wdanilo/prologue.git
+      commit: 8ccca5cd27f031d67bdb60084785709f41c9ff85
+  - location:
+      git:    https://github.com/wdanilo/data-repr.git
+      commit: a725e4dad9b0916514662e917cef692a91a51029
 
 extra-deps:
-  - prologue-1.0
+  - prologue-1.0.1
   - convert-1.0
   - typelevel-1.0.1
+  - data-repr-1.0.1
   - ghcjs-dom-0.2.2.0
   - StateVar-1.1.0.1
   - adjunctions-4.2.2
@@ -55,7 +57,6 @@ extra-deps:
   - data-default-instances-old-locale-0.0.1
   - pretty-show-1.6.8.2
   - haskell-lexer-1.0
-  - data-repr-1.0
   - generic-deriving-1.8.0
   - errors-2.0.1
   - safe-0.3.9
