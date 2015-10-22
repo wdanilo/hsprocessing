@@ -43,7 +43,6 @@ executable nodelab
                      , lens
                      , mtl
                      , transformers
-                     , algebraic
                      , prologue
                      , language-glsl
                      , parsec
@@ -52,10 +51,10 @@ executable nodelab
                      , prettyclass
                      , repa
                      , repa-algorithms
-                     , vector 
+                     , vector
                      , data-rtuple
                      , typelevel
                      , split
-                     
+
   hs-source-dirs:      src
   default-language:    Haskell2010

@@ -18,6 +18,9 @@ packages:
   - /Users/wdanilo/dev/hs/libs/jsaddle
 
 extra-deps:
+  - prologue-1.0
+  - convert-1.0
+  - typelevel-1.0.1
   - ghcjs-dom-0.2.2.0
   - StateVar-1.1.0.1
   - adjunctions-4.2.2
@@ -43,7 +46,6 @@ extra-deps:
   - void-0.7.1
   - jsaddle-0.2.2.0
   - algebraic-0.1.1
-  - prologue-1.0
   - transformers-base-0.4.4
   - data-default-0.5.3
   - data-default-class-0.0.1
