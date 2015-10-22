@@ -1,0 +1,608 @@
+<!DOCTYPE html>
+<!-- <html>
+  <head>
+    <script language="javascript" src="rts.js"></script>
+    <script language="javascript" src="lib.js"></script>
+    <script language="javascript" src="out.js"></script>
+  </head>
+  <body>
+  </body>
+  <script type="text/javascript" >
+    function readTextFile(file, callback) {
+        var rawFile = new XMLHttpRequest();
+        var output = rawFile.open("GET", file, false);
+        rawFile.onreadystatechange = function ()
+        {
+            if(rawFile.readyState === 4)
+            {
+                if(rawFile.status === 200 || rawFile.status == 0)
+                {
+                    var allText = rawFile.responseText;
+                    callback (allText);
+                }
+            }
+        }
+        return rawFile.send(null);
+        // return output;
+    }
+
+
+    console.log ("oh!");
+    console.log ("oh!");
+    console.log ("oh2!");
+    console.log (readTextFile("runmain.js", eval));
+  </script>
+</html> -->
+
+
+
+
+
+<html>
+
+<head>
+
+<script language="javascript" src="rts.js"></script>
+<script language="javascript" src="lib.js"></script>
+<script language="javascript" src="out.js"></script>
+
+
+
+<title>Learning WebGL &mdash; lesson 1</title>
+<meta http-equiv="content-type" content="text/html; charset=ISO-8859-1">
+
+<!-- <script type="text/javascript" src="glMatrix-0.9.5.min.js"></script>
+-->
+
+<script type="text/javascript" src="gl-matrix-min.js"></script>
+
+<script id="shader-fs" type="x-shader/x-fragment">
+    #extension GL_OES_standard_derivatives : enable
+
+    precision mediump float;
+
+    uniform vec2 dim;
+    uniform vec3 origin;
+    uniform float aa;
+    uniform float dpr;
+
+    varying vec4 vColor;
+    varying vec3 world;
+    varying vec2 uv;
+
+
+    //////////////////////////////////////
+    // Combine distance field functions //
+    //////////////////////////////////////
+
+    float length      (float a, float b) { return sqrt(a*a + b*b); }
+    float clamp       (float a)          { return clamp (a,0.0,1.0); }
+    float invert      (float a)          { return 1.0 - a; }
+    float mulInverted (float a, float b) { return invert (invert (a) * invert (b)); }
+
+    float sdf_smoothMerge(float d1, float d2, float k) {
+        float dk1 = d1/k;
+        float dk2 = d2/k;
+        float x = mulInverted(clamp (dk1), clamp (dk2));
+        // float x = length(dk1, dk2);
+        float h = clamp(0.5 + 0.5*(dk2 - dk1));
+        float r = (d1 * h + d2 * invert(h)) - k * h * invert(h);
+        r = clamp(r,r/x,r);
+        return r;
+    }
+
+    float sdf_smoothMergeDisorted(float d1, float d2, float k) {
+        float h = clamp(0.5 + 0.5*(d2 - d1)/k, 0.0, 1.0);
+        return mix(d2, d1, h) - k * h * (1.0-h);
+    }
+
+
+    float merge     (float d1, float d2) { return min( d1, d2); }
+    float sdf_subtract  (float d1, float d2) { return max(-d1, d2); }
+    float sdf_intersect (float d1, float d2) { return max( d1, d2); }
+    float sdf_grow      (float size, float d) { return d - size; }
+    float sdf_shrink    (float size, float d) { return sdf_grow(-size,d); }
+
+
+    //////////////////////////////
+    // Distance field functions //
+    //////////////////////////////
+
+
+    float sdf_pie(vec2 p, float angle) {
+        angle = radians(angle) / 2.0;
+        vec2 n = vec2(cos(angle), sin(angle));
+        return abs(p).x * n.x + p.y*n.y;
+    }
+
+
+    float sdf_circle(vec2 p, float radius) {
+        return length(p) - radius;
+    }
+
+    float sdf_circle(vec2 p, float radius, float angle) {
+        return sdf_subtract(sdf_pie(p, angle), sdf_circle(p,radius));
+    }
+
+    float sdf_ellipse(vec2 p, float a, float b) {
+        float a2  = a * a;
+        float b2  = b * b;
+        float px2 = p.x * p.x;
+        float py2 = p.y * p.y;
+        return (b2 * px2 + a2 * py2 - a2 * b2)/(a2 * b2);
+    }
+
+
+    float sdf_triangle(vec2 p, float radius) {
+        return max( abs(p).x * 0.866025 + 
+                    p.y * 0.5, -p.y) 
+                    -radius * 0.5;
+    }
+
+
+    float sdf_triangle(vec2 p, float width, float height) {
+        vec2 n = normalize(vec2(height, width / 2.0));
+        return max( abs(p).x*n.x + p.y*n.y - (height*n.y), -p.y);
+    }
+
+    float sdf_ring(vec2 p, float radius, float width) {
+        width /= 2.0;
+        radius -= width;
+        return abs(sdf_circle(p, radius)) - width;
+    }
+
+    float sdf_ring(vec2 p, float radius, float width, float angle) {
+       return sdf_subtract(sdf_pie(p, angle), sdf_ring(p, radius, width));
+    }
+
+    float sdf_rect(vec2 p, vec2 size) {
+        size /= 2.0;
+        vec2 d = abs(p) - size;
+        return min(max(d.x, d.y), 0.0) + length(max(d, 0.0));
+    }
+
+    float sdf_rect(vec2 p, vec2 size, float radius) {
+        size /= 2.0;
+        size -= vec2(radius);
+        vec2 d = abs(p) - size;
+        return min(max(d.x, d.y), 0.0) + length(max(d, 0.0)) - radius;
+    }
+
+    float sdf_rect(vec2 p, vec2 size, vec4 corners) {
+        float tl = corners[0];
+        float tr = corners[1];
+        float bl = corners[2];
+        float br = corners[3];
+
+        size /= 2.0;
+
+             if (p.x <  - size.x + tl && p.y >   size.y - tl ) { return length (p - vec2(- size.x + tl,   size.y - tl)) - tl; }
+        else if (p.x >    size.x - tr && p.y >   size.y - tr ) { return length (p - vec2(  size.x - tr,   size.y - tr)) - tr; }
+        else if (p.x <  - size.x + bl && p.y < - size.y + bl ) { return length (p - vec2(- size.x + bl, - size.y + bl)) - bl; }
+        else if (p.x >    size.x - br && p.y < - size.y + br ) { return length (p - vec2(  size.x - br, - size.y + br)) - br; }
+        else {
+            vec2 d = abs(p) - size;
+            return min(max(d.x, d.y), 0.0) + length(max(d, 0.0));
+        }
+    }
+
+
+    float sdf_line(vec2 p, vec2 start, vec2 end, float width) {
+        vec2 dir = start - end;
+        float lngth = length(dir);
+        dir /= lngth;
+        vec2 proj = max(0.0, min(lngth, dot((start - p), dir))) * dir;
+        return length( (start - p) - proj ) - (width / 2.0);
+    }
+
+
+    ///////////////////////
+    // Masks for drawing //
+    ///////////////////////
+
+
+    float sdf_fill(float dist) {
+        return clamp(-dist, 0.0, 1.0);
+    }
+
+
+    // float sdf_borderOut(float width, float p) {
+    //     float alpha1 = clamp(p);
+    //     float alpha2 = clamp(p - width);
+    //     return sdf_subtract (sdf_shrink(width,p),p);
+    // }
+
+    float sdf_borderOut(float width, float p) {
+        return sdf_subtract (p + 0.5,sdf_grow(width,p));
+    }
+
+    float sdf_borderIn(float width, float p) {
+        float alpha1 = clamp(p);
+        float alpha2 = clamp(p - width);
+        return sdf_subtract (p,sdf_grow(width,p));
+    }
+
+    vec4 sdf_shadow(float p, float width, float intensity, float exp) {
+        return vec4(0.0,0.0,0.0,pow(1.0-clamp(p/width),exp) * intensity);
+    }
+
+    
+
+
+    /////////////////////
+    // Transformations //
+    /////////////////////
+
+
+    vec2 sdf_rotateCCW(vec2 p, float a) {
+        mat2 m = mat2(cos(a), sin(a), -sin(a), cos(a));
+        return p * m;   
+    }
+
+
+    vec2 sdf_rotateCW(vec2 p, float a) {
+        mat2 m = mat2(cos(a), -sin(a), sin(a), cos(a));
+        return p * m;
+    }
+
+
+    vec2 translate(vec2 p, vec2 t) {
+        return p - t;
+    }
+
+
+    // ---------------------------
+
+    vec3 hsv2rgb(vec3 c) {
+        vec4 K = vec4(1.0, 2.0 / 3.0, 1.0 / 3.0, 3.0);
+        vec3 p = abs(fract(c.xxx + K.xyz) * 6.0 - K.www);
+        return c.z * mix(K.xxx, clamp(p - K.xxx, 0.0, 1.0), c.y);
+    }
+
+
+
+    float sdf_aa(float d) {
+        float anti = fwidth(d) * aa;
+        return 1.0-smoothstep(-anti, anti, d);
+    }
+
+    vec2 cartesian2polar (vec2 p) {
+        return vec2(length(p), atan(p.y, p.x));
+    }
+
+    vec3 gradient_hsv (vec2 p, float step) {
+        return hsv2rgb(vec3(p.x/step,1.0,1.0)); 
+    }
+
+
+    vec2 appTrans2D (vec2 p, mat4 xform) {
+        return (xform * vec4(p,0.0,1.0)).xy;
+    }
+
+    float bismooth (float a, float exp) {
+        if (a > 0.5) { return 1.0 - pow((1.0 - a) * 2.0, exp)/2.0; } 
+        else         { return pow(a * 2.0, exp)/2.0;               }
+    }
+
+    vec3 smoothMerge (float d1, float d2, vec3 c1, vec3 c2, float width) {
+        return mix (c1,c2,bismooth(clamp((d1-d2+2.0*width)/(4.0*width)),2.0));
+    }
+
+    
+
+    void main(void) {
+        vec3 local   = world - origin;
+        vec3 ulocal  = local*dpr;
+        
+        mat4 xform1 = mat4 ( 1.0, 0.0, 0.0, 0.0
+                           , 0.0, 0.8, 0.0, 0.0
+                           , 0.0, 0.0, 1.0, 0.0
+                           , 0.0, 0.0, 0.0, 1.0
+                           );
+
+        mat4 xform2 = mat4 ( 0.8, 0.0, 0.0, 0.0
+                           , 0.0, 1.0, 0.0, 0.0
+                           , 0.0, 0.0, 1.0, 0.0
+                           , 0.0, 0.0, 0.0, 1.0
+                           );
+
+        mat4 xform = xform1 * xform2;
+        // vec4 ulocal2 = vec4 (ulocal,1.0);
+        // ulocal2 = xform * ulocal2;
+        // ulocal = ulocal2.xyz;
+
+        vec2 p = ulocal.xy;// + vec2(0.5);
+        vec2 c = dim.xy / 2.0;
+        vec2 z = p/dim.xy;
+
+        // vec4 col = vec4(0.3, 0.3, 0.3, 1.0) * (0.5*length(c - p)/dim.x);
+
+        p = appTrans2D (p,xform);
+
+        float g;
+        float g1  = sdf_rect (sdf_rotateCCW(translate(p,vec2(80,70)),3.14/4.0), vec2 (60.0,60.0), 10.0);
+        // float g2 = sdf_rect (translate(p,vec2(150,160)), vec2 (140.0,100.0), vec4 (0.0,10.0,20.0,70.0));
+        float g2  = sdf_rect (translate(p,vec2(150,160)), vec2 (140.0,100.0), vec4 (80.0,20.0,20.0,10.0));
+        float g3  = sdf_ellipse (translate(p,vec2(150,160)), 40.0, 20.0);
+        float g4  = sdf_circle  (translate(p,vec2(150,160)), 40.0);
+        float g4x = sdf_circle (translate(p,vec2(150,160)), 60.0, 60.0); 
+        float g5  = sdf_ring  (translate(p,vec2(150,160)), 40.0, 3.0);
+        float gp  = sdf_pie  (translate(p,vec2(150,160)), 80.0);
+    // float sdf_ring(vec2 p, float radius, float angle, float width)
+
+        vec3 c1 = vec3(1.0,0.4,0.0);
+        vec3 c2 = vec3(0.0,0.4,1.0);
+
+        vec3 bc1 = gradient_hsv(p,100.0);
+        vec3 bc2 = gradient_hsv(cartesian2polar(translate(p,vec2(100.0,100.0))),10.0);
+
+        vec3 col = smoothMerge (g1,g2,c1,c2,40.0);
+        vec3 bc  = smoothMerge (g1,g2,bc1,bc2,40.0); 
+
+        g = sdf_smoothMergeDisorted(g1,g2,40.0);
+        vec4 l1 = vec4(col, sdf_aa(g     ) );
+        // vec4 l2 = vec4(1.0,1.0,1.0, sdf_aa(g-10.0) );
+        vec4 l2 = vec4(1.0,1.0,1.0, sdf_aa(sdf_borderOut(10.0,g)) );
+        // sdf_borderOut
+        vec4 l3 = sdf_shadow(sdf_borderOut(10.0,g), 20.0, 0.2, 2.0);
+
+        // gl_FragColor = clamp(col, 0.0, 1.0);
+        gl_FragColor = vec4(0.1,0.1,0.1,1.0);
+
+        gl_FragColor = vec4(mix(gl_FragColor.rgb, l3.rgb, l3.a),1.0);
+        // gl_FragColor = vec4(mix(gl_FragColor.rgb, gradient_hsv(cartesian2polar(translate(p,vec2(100.0,100.0))),10.0), l2.a),1.0);
+        gl_FragColor = vec4(mix(gl_FragColor.rgb, bc, l2.a),1.0);
+        // gl_FragColor = vec4(mix(gl_FragColor.rgb, l1.rgb, l1.a * 0.6),1.0);
+
+    }
+</script>
+
+<script id="shader-vs" type="x-shader/x-vertex">
+    attribute vec3 aVertexPosition;
+    attribute vec4 aVertexColor;
+    attribute vec3 vertexCoord;
+    attribute vec2 vtxUV;
+
+    uniform mat4 uMVMatrix;
+    uniform mat4 uPMatrix;
+
+    varying vec4 vColor;
+    varying vec3 world;
+    varying vec2 uv;
+
+    void main(void) {
+        vColor      = aVertexColor;
+        world       = vertexCoord;
+        uv          = vtxUV;
+
+        // 
+
+        gl_Position = uPMatrix * uMVMatrix * vec4(aVertexPosition, 1.0);
+    }
+</script>
+
+
+<script type="text/javascript">
+
+    function readTextFile(file, callback) {
+        var rawFile = new XMLHttpRequest();
+        var output = rawFile.open("GET", file, false);
+        rawFile.onreadystatechange = function ()
+        {
+            if(rawFile.readyState === 4)
+            {
+                if(rawFile.status === 200 || rawFile.status == 0)
+                {
+                    var allText = rawFile.responseText;
+                    callback (allText);
+                }
+            }
+        }
+        return rawFile.send(null);
+    }
+
+
+    var gl;
+
+
+    function registerGL(g) { gl = g; }
+
+
+    function getShader(gl, id) {
+        var shaderScript = document.getElementById(id);
+        if (!shaderScript) {
+            return null;
+        }
+
+        var str = "";
+        var k = shaderScript.firstChild;
+        while (k) {
+            if (k.nodeType == 3) {
+                str += k.textContent;
+            }
+            k = k.nextSibling;
+        }
+
+        var shader;
+        if (shaderScript.type == "x-shader/x-fragment") {
+            shader = gl.createShader(gl.FRAGMENT_SHADER);
+        } else if (shaderScript.type == "x-shader/x-vertex") {
+            shader = gl.createShader(gl.VERTEX_SHADER);
+        } else {
+            return null;
+        }
+
+        gl.shaderSource(shader, str);
+        gl.compileShader(shader);
+
+        if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+            alert(gl.getShaderInfoLog(shader));
+            return null;
+        }
+
+        return shader;
+    }
+
+    function compileFragmentShader(gl, source) {
+        var shader = gl.createShader(gl.FRAGMENT_SHADER);
+        gl.shaderSource(shader, source);
+        gl.compileShader(shader);
+
+        if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+            alert(gl.getShaderInfoLog(shader));
+            return null;
+        }
+
+        return shader;
+    }
+
+
+    var shaderProgram;
+
+    function initShaders(s) {
+        var fragmentShader = compileFragmentShader(gl, s);
+        // var fragmentShader = getShader(gl, "shader-fs");
+        var vertexShader   = getShader(gl, "shader-vs");
+
+        shaderProgram = gl.createProgram();
+        gl.attachShader(shaderProgram, vertexShader);
+        gl.attachShader(shaderProgram, fragmentShader);
+        gl.linkProgram(shaderProgram);
+
+        if (!gl.getProgramParameter(shaderProgram, gl.LINK_STATUS)) {
+            alert("Could not initialise shaders");
+        }
+
+        gl.useProgram(shaderProgram);
+
+        shaderProgram.vertexPositionAttribute = gl.getAttribLocation(shaderProgram, "aVertexPosition");
+        gl.enableVertexAttribArray(shaderProgram.vertexPositionAttribute);
+
+        shaderProgram.vertexColorAttribute = gl.getAttribLocation(shaderProgram, "aVertexColor");
+        gl.enableVertexAttribArray(shaderProgram.vertexColorAttribute);
+
+        shaderProgram.vertexCoordAttribute = gl.getAttribLocation(shaderProgram, "vertexCoord");
+        gl.enableVertexAttribArray(shaderProgram.vertexCoordAttribute);
+
+        shaderProgram.vtxUVAttr = gl.getAttribLocation(shaderProgram, "vtxUV");
+        gl.enableVertexAttribArray(shaderProgram.vtxUVAttr);
+
+        // shaderProgram.dimAttr = gl.getAttribLocation(shaderProgram, "vtxDim");
+        // gl.enableVertexAttribArray(shaderProgram.dimAttr);
+
+        shaderProgram.pMatrixUniform  = gl.getUniformLocation(shaderProgram, "uPMatrix");
+        shaderProgram.mvMatrixUniform = gl.getUniformLocation(shaderProgram, "uMVMatrix");
+
+        shaderProgram.dimUni    = gl.getUniformLocation(shaderProgram, "dim");
+        shaderProgram.dprUni    = gl.getUniformLocation(shaderProgram, "dpr");
+        shaderProgram.aaUni     = gl.getUniformLocation(shaderProgram, "aa");
+        shaderProgram.originUni = gl.getUniformLocation(shaderProgram, "origin");
+        return shaderProgram;
+    }
+
+
+
+    var mvMatrix = mat4.create();
+    var pMatrix = mat4.create();
+
+    function setMatrixUniforms() {
+        gl.uniformMatrix4fv(shaderProgram.pMatrixUniform, false, pMatrix);
+        gl.uniformMatrix4fv(shaderProgram.mvMatrixUniform, false, mvMatrix);
+    }
+
+
+
+
+    var triangleVertexPositionBuffer;
+    var squareVertexPositionBuffer;
+    var squareVertexColorBuffer;
+
+    function initBuffers() {
+        triangleVertexPositionBuffer = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, triangleVertexPositionBuffer);
+        var vertices = [
+             0.0,  1.0,  0.0,
+            -1.0, -1.0,  0.0,
+             1.0, -1.0,  0.0
+        ];
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
+        triangleVertexPositionBuffer.itemSize = 3;
+        triangleVertexPositionBuffer.numItems = 3;
+
+        squareVertexPositionBuffer = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, squareVertexPositionBuffer);
+        vertices = [
+             1.0,  1.0,  0.0,
+            -1.0,  1.0,  0.0,
+             1.0, -1.0,  0.0,
+            -1.0, -1.0,  0.0
+        ];
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
+        squareVertexPositionBuffer.itemSize = 3;
+        squareVertexPositionBuffer.numItems = 4;
+    }
+
+    var foo1 = {ala: 12}
+
+    function prepareScene(){
+        // gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+
+        // mat4.perspective(pMatrix, 45, gl.viewportWidth / gl.viewportHeight, 0.1, 100.0);
+        mat4.ortho      (pMatrix, 0, gl.viewportWidth, 0, gl.viewportWidth, 0.1, 100.0);
+
+// mat4.ortho(out, left, right, bottom, top, near, far)
+
+        mat4.identity(mvMatrix);
+
+        gl.viewport(0, 0, gl.viewportWidth, gl.viewportHeight);
+
+
+    }
+    function test() {
+        
+
+        // mat4.translate(mvMatrix, mvMatrix, [-1.5, 0.0, -7.0]);
+        // gl.bindBuffer(gl.ARRAY_BUFFER, triangleVertexPositionBuffer);
+        // gl.vertexAttribPointer(shaderProgram.vertexPositionAttribute, triangleVertexPositionBuffer.itemSize, gl.FLOAT, false, 0, 0);
+        // setMatrixUniforms();
+        // gl.drawArrays(gl.TRIANGLES, 0, triangleVertexPositionBuffer.numItems);
+
+
+        // mat4.translate(mvMatrix, mvMatrix, [3.0, 0.0, 0.0]);
+        // gl.bindBuffer(gl.ARRAY_BUFFER, squareVertexPositionBuffer);
+        // gl.vertexAttribPointer(shaderProgram.vertexPositionAttribute, squareVertexPositionBuffer.itemSize, gl.FLOAT, false, 0, 0);
+        // setMatrixUniforms();
+        // gl.drawArrays(gl.TRIANGLE_STRIP, 0, squareVertexPositionBuffer.numItems);
+        var available_extensions = gl.getSupportedExtensions();
+        console.log(available_extensions);
+        var ext = gl.getExtension('OES_standard_derivatives');
+        console.log(ext);
+    }
+
+
+
+    function webGLStart() {
+        // #extension GL_OES_standard_derivatives : enable
+        readTextFile("runmain.js",eval);
+        // var available_extensions = gl.getSupportedExtensions();
+        // console.log(available_extensions);
+    }
+
+   
+// ["ANGLE_instanced_arrays", "EXT_blend_minmax", "EXT_frag_depth", "EXT_shader_texture_lod", "EXT_sRGB", "EXT_texture_filter_anisotropic", "WEBKIT_EXT_texture_filter_anisotropic", "OES_element_index_uint", "OES_standard_derivatives", "OES_texture_float", "OES_texture_float_linear", "OES_texture_half_float", "OES_texture_half_float_linear", "OES_vertex_array_object", "WEBGL_compressed_texture_s3tc", "WEBKIT_WEBGL_compressed_texture_s3tc", "WEBGL_debug_renderer_info", "WEBGL_debug_shaders", "WEBGL_depth_texture", "WEBKIT_WEBGL_depth_texture", "WEBGL_draw_buffers", "WEBGL_lose_context", "WEBKIT_WEBGL_lose_context"]
+
+</script>
+
+
+</head>
+
+
+<body onload="webGLStart();">
+    <br />
+
+    <canvas id="canvas" style="border: none;" width="500" height="500"></canvas>
+
+    <br/>
+</body>
+
+</html>
