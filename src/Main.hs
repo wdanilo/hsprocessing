@@ -163,6 +163,7 @@ makeLenses ''Mesh
 triangular = flip Mesh 3
 
 
+
 --data Point3 a = Point3 a a a deriving (Show, Functor)
 --data Point2 a = Point2 a a   deriving (Show, Functor)
 

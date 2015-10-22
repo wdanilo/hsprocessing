@@ -23,6 +23,8 @@ import qualified Control.Monad.State           as State
 import           GHC.TypeLits
 import           Control.Monad.State           (State, runState, evalState, execState, get, put)
 import           Data.Array.Linear.Color.Class
+import           Data.Array.Linear.Color.Modes
+import           Data.Array.Linear.Color.Attrs.RGBA
 
 --import qualified Data.Array.Repa as Repa
 --import           Data.Array.Repa hiding (Shape)
@@ -216,7 +218,7 @@ ball r p = ("sdf_ball" [convert p, convert r] :: Expr)
 
 
 --v :: _ => _
-v = fromList [1, 2, 3] :: A.BVec 3 Float
+v = fromListUnsafe [1, 2, 3] :: A.BVec 3 Float
 
 --linear :: (VecData dim a ~ RTuple t, dim ~ DimOf (RTuple t)) => RTuple t -> Linear dim a 
 --linear = Linear
@@ -226,16 +228,6 @@ v' = convert v :: Expr
 instance (Convertible a Expr, KnownNat dim) => Convertible (A.BVec dim a) Expr where
     convert v = fromString ("vec" <> show (natVal (Proxy :: Proxy dim))) $ fmap convert $ toList v
 
-
-vec0_ :: A.BVec 0 t
-vec1_ :: t -> A.BVec 1 t
-vec2_ :: t -> t -> A.BVec 2 t
-vec3_ :: t -> t -> t -> A.BVec 3 t
-
-vec0_          = fromList []
-vec1_ t1       = fromList [t1]
-vec2_ t1 t2    = fromList [t1,t2]
-vec3_ t1 t2 t3 = fromList [t1,t2,t3]
 
 
 
@@ -305,23 +297,16 @@ data Shape space a = Shape (A.BQuaternion a) Style (SDF space a)
                    | Merge (Shape space a) (Shape space a)
                    | Diff  (Shape space a) (Shape space a)
 
---s1 = Style (Just $ Solid $ fromList )
+
+
 b1 :: Shape (Cartesian 2) Expr
 b1 = Shape mempty def (sdf $ Ball 100.0)
 
 
-magicPosV2 :: A.BVec 2 Expr
-magicPosV2 = vec2_ ("p" .> "x") ("p" .> "y")
-
-
-
-
---buildGLSL :: Shape (Cartesian 2) Expr -> Expr
---buildGLSL (Shape xform style sdf) = runSDF sdf magicPosV2
 
 
 data StdUniforms = StdUniforms { _position :: A.BVec 2 Expr 
-                               , _color    :: Expr
+                               , _colorx   :: Expr
                                } deriving (Show)
 makeLenses ''StdUniforms
 
@@ -331,8 +316,8 @@ data GLSLState = GLSLState { _stdUniforms :: StdUniforms
 makeLenses ''GLSLState
 
 instance Monoid StdUniforms where
-    mempty = StdUniforms { _position = vec2_ ("p" .> "x") ("p" .> "y")
-                         , _color    = "gl_FragColor"
+    mempty = StdUniforms { _position = A.vec2 ("p" .> "x") ("p" .> "y")
+                         , _colorx   = "gl_FragColor"
                          }
 
 instance Monoid GLSLState where
@@ -365,7 +350,7 @@ newName pfx = fromString <$> newName' pfx
 getStdUniforms = view stdUniforms <$> getState
 
 getPosition = view position <$> getStdUniforms 
-getColor    = view color    <$> getStdUniforms 
+getColor    = view colorx   <$> getStdUniforms 
 
 ---------------------
 
@@ -422,9 +407,9 @@ main = do
     let pps = prettyShow s1
 
 
-    let c = RGB $ fromList [1,2,3] :: Color RGB Float
+    let c = RGB $ fromListUnsafe [1,2,3] :: Color RGB Float
         d = c & (wrapped' . A.x) .~ 10 
-        e = c & wrapped .~ (fromList [1,2,3]) :: Color RGB Int
+        e = c & wrapped .~ (fromListUnsafe [1,2,3]) :: Color RGB Int
 
 
     print d

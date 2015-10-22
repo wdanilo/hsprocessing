@@ -46,7 +46,6 @@ instance (KnownNat a, KnownNats as) => KnownNats (a ': as)    where natLstVal _ 
 
 data family Array (shape :: [Nat]) t a
 
---type family ShapeOf (a :: * -> * -> *) :: [Nat]
 type family TypeOf  (a :: * -> *)      :: *
 
 class IsArray f where array :: Iso (f t a) (f t' a') (Array (ShapeOf f) t a) (Array (ShapeOf f) t' a')
@@ -60,35 +59,33 @@ shapeOf _ = natLstVal (Proxy :: Proxy (ShapeOf f))
 
 
 -- array info instances
-type instance ShapeOf (Array shape)     = shape
-type instance ShapeOf (Array shape t)   = shape
-type instance ShapeOf (Array shape t a) = shape
-type instance TypeOf  (Array shape t) = t
+type instance ShapeOf (Array sh    ) = sh
+type instance ShapeOf (Array sh t  ) = sh
+type instance ShapeOf (Array sh t a) = sh
+type instance TypeOf  (Array sh t  ) = t
+type instance Item    (Array sh t a) = a
 
---TODO: color from Vector! 
 -- math relations instances
 type instance ProductOf (Array sh t a) (Array sh t b) = Array sh t (ProductOf a b)
 
-instance (sh ~ sh', t ~ t', Mul a b, IsList (Array sh t a), IsList (Array sh t b), IsList (Array sh t (ProductOf a b)))
+instance (sh ~ sh', t ~ t', Mul a b, ToList (Array sh t a), ToList (Array sh t b), FromListUnsafe (Array sh t (ProductOf a b)))
       => Mul (Array sh t a) (Array sh' t' b) where
-    a * b = fromList $ (uncurry (*) <$> zip (toList a) (toList b))
+    a * b = fromListUnsafe $ (uncurry (*) <$> zip (toList a) (toList b))
 
 -- utils instances
 instance IsArray  (Array shape) where array = id
 
-instance (Monoid (Item (Array sh t a)), IsList (Array sh t a), KnownNats sh)
+instance (Monoid (Item (Array sh t a)), FromListUnsafe (Array sh t a), KnownNats sh)
       => Monoid (Array sh t a) where
-    mempty = fromList $ replicate (product $ natLstVal (Proxy :: Proxy sh)) mempty
+    mempty = fromListUnsafe $ replicate (product $ natLstVal (Proxy :: Proxy sh)) mempty
 
-instance IsList' (Array sh t a) => IsList (Array sh t a) where
-    type Item (Array sh t a) = a
-    fromList = fromList'
-    toList   = toList'
+instance {-# OVERLAPPABLE #-} (a ~ Item (Unwrapped (Array sh t a)), Wrapped (Array sh t a), ToList (Unwrapped (Array sh t a)))
+      => ToList (Array sh t a) where
+    toList = toList . view wrapped'
 
--- TODO[WD]: refactor the IsList' class. It is used to show that for each Array data family instance, Item is the last param
-class IsList' l where
-  fromList' :: [Item l] -> l
-  toList'   :: l        -> [Item l]
+instance {-# OVERLAPPABLE #-} (a ~ Item (Unwrapped (Array sh t a)), Wrapped (Array sh t a), FromList (Unwrapped (Array sh t a)))
+      => FromListUnsafe (Array sh t a) where
+    fromListUnsafe = view unwrapped' . fromList
 
 
 -- === Reshape ===
@@ -142,8 +139,9 @@ diagonal diag bgrnd = generate $ \lst -> if and $ fmap (== head lst) lst then di
 
 newtype Matrix (width :: Nat) (height :: Nat) t a = Matrix (Array '[width, height] t a)
 
-type instance ShapeOf (Matrix w h)   = '[w,h]
-type instance TypeOf  (Matrix w h t) = t
+type instance ShapeOf (Matrix w h)     = '[w,h]
+type instance TypeOf  (Matrix w h t)   = t
+type instance Item    (Matrix w h t a) = a
 
 -- derivings
 
@@ -178,12 +176,6 @@ instance ( w ~ h', t ~ t', Mul a b, IsList (Matrix w h t a), IsList (Matrix w' h
             row = toList $ unsafeIndex y rs
 
 
---sum :: (Foldable t, Add a a, SumOf a a ~ a, Num a) => t a -> a
-
-
---generate :: Generated f t => ([Int] -> a) -> f t a
---generate = generate' . const
-
 -- utils instances
 
 instance IsArray (Matrix w h) where array = wrapped
@@ -193,15 +185,16 @@ instance Wrapped   (Matrix w h t a) where
     type Unwrapped (Matrix w h t a) = Array '[w, h] t a
     _Wrapped' = iso (\(Matrix a) -> a) Matrix
 
-instance (IsList d, Monoid (Item d), KnownNats '[w,h], d ~ Unwrapped (Matrix w h t a))
+instance (FromListUnsafe d, Monoid (Item d), KnownNats '[w,h], d ~ Unwrapped (Matrix w h t a))
       => Monoid (Matrix w h t a) where
     mempty = Matrix mempty 
     mappend (Matrix m1) (Matrix m2) = Matrix $ m1 <> m2
 
-instance IsList (Unwrapped (Matrix w h t a)) => IsList (Matrix w h t a) where
-    type Item (Matrix w h t a) = Item (Unwrapped (Matrix w h t a))
-    fromList = view unwrapped . fromList
-    toList   = toList . view wrapped
+instance FromListUnsafe (Unwrapped (Matrix w h t a)) => FromListUnsafe (Matrix w h t a) where
+    fromListUnsafe = view unwrapped . fromListUnsafe
+
+instance ToList (Unwrapped (Matrix w h t a)) => ToList (Matrix w h t a) where
+    toList = toList . view wrapped
 
 
 
@@ -215,23 +208,24 @@ type    Quaternion             = XForm 4
 
 type BQuaternion = Quaternion Boxed
 
+type instance ShapeOf (XForm dim)     = '[dim,dim]
+type instance TypeOf  (XForm dim t)   = t
+type instance Item    (XForm dim t a) = a
+
 -- utils
 
-translation :: (Dim3 (Vector 3) t, IsList' (Array '[4, 4] t a), Num a)
+translation :: (Dim3 (Vector 3) t, Num a, FromListUnsafe (XForm 4 t a))
             => Vector 3 t a -> Quaternion t a
-translation v = fromList [ 1 ,0 ,0 ,0
-                         , 0 ,1 ,0 ,0
-                         , 0 ,0 ,1 ,0
-                         , vx,vy,vz,1
-                         ] 
+translation v = fromListUnsafe
+              $ [ 1 ,0 ,0 ,0
+                , 0 ,1 ,0 ,0
+                , 0 ,0 ,1 ,0
+                , vx,vy,vz,1 ] 
     where vx = v ^. x
           vy = v ^. y
           vz = v ^. z
 
 -- class instances
-
-type instance ShapeOf (XForm dim)   = '[dim,dim]
-type instance TypeOf  (XForm dim t) = t
 
 deriving instance Show (Unwrapped (XForm dim t a)) => Show    (XForm dim t a)
 deriving instance Functor (Matrix dim dim t)       => Functor (XForm dim t)
@@ -247,10 +241,11 @@ instance Wrapped   (XForm dim t a) where
 instance (Generated (XForm dim) t, Num a) => Monoid (XForm dim t a) where
     mempty = diagonal 1 0
 
-instance IsList (Unwrapped (XForm dim t a)) => IsList (XForm dim t a) where
-    type Item (XForm dim t a) = Item (Unwrapped (XForm dim t a))
-    fromList = view unwrapped . fromList
-    toList   = toList . view wrapped
+instance FromListUnsafe (Unwrapped (XForm dim t a)) => FromListUnsafe (XForm dim t a) where
+    fromListUnsafe = view unwrapped . fromListUnsafe
+
+instance ToList (Unwrapped (XForm dim t a)) => ToList (XForm dim t a) where
+    toList = toList . view wrapped
 
 -----------------------------------------------------------------------
 -- Vector
@@ -260,8 +255,23 @@ newtype Vector (dim   :: Nat) t a = Vector (Array '[dim] t a)
 
 type BVec dim = Vector dim Boxed
 
-type instance ShapeOf (Vector dim)   = '[dim]
-type instance TypeOf  (Vector dim t) = t
+type instance ShapeOf (Vector dim)     = '[dim]
+type instance TypeOf  (Vector dim t)   = t
+type instance Item    (Vector dim t a) = a
+
+-- utils
+
+vec1 :: FromListUnsafe (Vector 1 t a) => a -> Vector 1 t a
+vec1 t1 = fromListUnsafe [t1]
+
+vec2 :: FromListUnsafe (Vector 2 t a) => a -> a -> Vector 2 t a
+vec2 t1 t2 = fromListUnsafe [t1, t2]
+
+vec3 :: FromListUnsafe (Vector 3 t a) => a -> a -> a -> Vector 3 t a
+vec3 t1 t2 t3 = fromListUnsafe [t1, t2, t3]
+
+vec4 :: FromListUnsafe (Vector 4 t a) => a -> a -> a -> a -> Vector 4 t a
+vec4 t1 t2 t3 t4 = fromListUnsafe [t1, t2, t3, t4]
 
 
 -- class instances
@@ -276,16 +286,16 @@ instance Wrapped   (Vector dim t a) where
 
 instance IsArray (Vector t) where array = wrapped
 
-instance (IsList d, Monoid (Item d), KnownNat dim, d ~ Unwrapped (Vector dim t a))
+instance (FromListUnsafe d, Monoid (Item d), KnownNat dim, d ~ Unwrapped (Vector dim t a))
       => Monoid (Vector dim t a) where
     mempty = Vector mempty
 
-instance IsList (Array '[dim] t a) => IsList (Vector dim t a) where
-    type Item (Vector dim t a) = Item (Unwrapped (Vector dim t a))
-    fromList = view unwrapped . fromList
-    toList   = toList . view wrapped
+instance FromListUnsafe (Unwrapped (Vector dim t a)) => FromListUnsafe (Vector dim t a) where
+    fromListUnsafe = Vector . fromListUnsafe
 
-
+instance ToList (Unwrapped (Vector dim t a)) => ToList (Vector dim t a) where
+    toList = toList . view wrapped
+    
 
 -- === Accessors ===
 
@@ -411,11 +421,15 @@ instance Wrapped   (Array sh Boxed a) where
     type Unwrapped (Array sh Boxed a) = (V.Vector a)
     _Wrapped' = iso (\(B_Array a) -> a) B_Array
 
+instance FromListUnsafe (Array sh Boxed a) where
+    fromListUnsafe = B_Array . fromList
 --instance Reshape nsh (Array sh) Boxed where unsafeReshape _ (B_Array a) = B_Array a 
 
-instance IsList' (Array sh Boxed a) where
-    fromList' = view unwrapped . fromList
-    toList'   = toList . view wrapped
+
+
+--instance IsList' (Array sh Boxed a) where
+--    fromList' = view unwrapped . fromList
+--    toList'   = toList . view wrapped
 
 
 instance UnsafeIndex (Array sh) Boxed where
@@ -424,12 +438,12 @@ instance UnsafeIndex (Array sh) Boxed where
 
 -- TODO[WD]: make it more general, suitable for processing arbitrary dimension arrays
 instance KnownNats '[w, h] => ExtractDim 0 [w,h] Boxed where
-    extractDim _ a = fromList $ flip fmap [0 .. w - 1] $ \col -> B_Array $ V.generate h $ \row -> V.unsafeIndex v (row * w + col) where
+    extractDim _ a = fromListUnsafe $ flip fmap [0 .. w - 1] $ \col -> B_Array $ V.generate h $ \row -> V.unsafeIndex v (row * w + col) where
         [w,h] = shapeOf a
         v     = a ^. wrapped
 
 instance KnownNats '[w, h] => ExtractDim 1 [w,h] Boxed where
-    extractDim _ a = fromList $ flip fmap [0 .. h - 1] $ \row -> B_Array $ V.generate w $ \col -> V.unsafeIndex v (row * w + col) where
+    extractDim _ a = fromListUnsafe $ flip fmap [0 .. h - 1] $ \row -> B_Array $ V.generate w $ \col -> V.unsafeIndex v (row * w + col) where
         [w,h] = shapeOf a
         v     = a ^. wrapped
 
@@ -517,29 +531,29 @@ instance      Add   Double Double
 
 main = do 
     --let m = fmap getSum (mempty :: Matrix 4 4 Boxed (Sum Float))
-    let 
-        m = generate (\[x,y] -> (x,y)) :: Array '[3,4] Boxed (Int, Int)
-        --m = fmap getSum (mempty :: Quaternion Boxed (Sum Int))
-        --m = diagonal 1 0 :: Quaternion Boxed Int
-        --m = mempty :: Quaternion Boxed Int
-        --v = fmap getSum (mempty :: Vector 2 Boxed (Sum Int))
+        --let 
+        --    m = generate (\[x,y] -> (x,y)) :: Array '[3,4] Boxed (Int, Int)
+        --    --m = fmap getSum (mempty :: Quaternion Boxed (Sum Int))
+        --    --m = diagonal 1 0 :: Quaternion Boxed Int
+        --    --m = mempty :: Quaternion Boxed Int
+        --    --v = fmap getSum (mempty :: Vector 2 Boxed (Sum Int))
 
-        --m1 = diagonal 1 0 :: Matrix 4 4 Boxed Int
-        m1 = fromList [1,2,3,4] :: Matrix 2 2 Boxed Int
-        m2 = fromList [5,6,7,8] :: Matrix 2 2 Boxed Int
-        --m2 = constant 5   :: Matrix 4 4 Boxed Int
+        --    --m1 = diagonal 1 0 :: Matrix 4 4 Boxed Int
+        --    m1 = fromListUnsafe [1,2,3,4] :: Matrix 2 2 Boxed Int
+        --    m2 = fromListUnsafe [5,6,7,8] :: Matrix 2 2 Boxed Int
+        --    --m2 = constant 5   :: Matrix 4 4 Boxed Int
 
-        v = fromList [1,2,3] :: Vector 3 Boxed Int --  (mempty :: Vector 2 Boxed (Sum Int))
+        --    v = fromListUnsafe [1,2,3] :: Vector 3 Boxed Int --  (mempty :: Vector 2 Boxed (Sum Int))
 
 
 
-    print "vvvvvvvvvvvvvv"
+        --print "vvvvvvvvvvvvvv"
 
-    prettyPrint $ m1
-    print ""
-    prettyPrint $ m2
-    print ""
-    prettyPrint $ m1 * m2
+        --prettyPrint $ m1
+        --print ""
+        --prettyPrint $ m2
+        --print ""
+        --prettyPrint $ m1 * m2
 
 
     --mapM_ print $ toList $ rows m

@@ -32,7 +32,10 @@ executable nodelab
                      Data.Array.Linear
                      Data.Array.Linear.Color
                      Data.Array.Linear.Color.Attrs
+                     Data.Array.Linear.Color.Attrs.RGBA
+                     Data.Array.Linear.Color.Attrs.HSVA
                      Data.Array.Linear.Color.Class
+                     Data.Array.Linear.Color.Modes
                      Data.Array.Linear.Properties
 
   build-depends:       base >= 4.8 && < 4.9
@@ -49,8 +52,6 @@ executable nodelab
                      , template-haskell
                      , convert
                      , prettyclass
-                     , repa
-                     , repa-algorithms
                      , vector
                      , data-rtuple
                      , typelevel
