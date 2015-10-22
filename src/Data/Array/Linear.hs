@@ -8,7 +8,7 @@
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE RankNTypes #-}
 
-module Data.Array.Linear where
+module Data.Array.Linear (module Data.Array.Linear, module X) where
 
 --import Data.Vector
 
@@ -25,7 +25,7 @@ import Control.Monad.State
 import Data.List.Split (chunksOf)
 import Type.List (RemovedIdx, ElAt)
 
-
+import Data.Array.Linear.Properties as X
 
 data Boxed   = Boxed deriving (Show)
 data Unboxed = Uboxed deriving (Show)
@@ -46,7 +46,7 @@ instance (KnownNat a, KnownNats as) => KnownNats (a ': as)    where natLstVal _ 
 
 data family Array (shape :: [Nat]) t a
 
-type family ShapeOf (a :: * -> * -> *) :: [Nat]
+--type family ShapeOf (a :: * -> * -> *) :: [Nat]
 type family TypeOf  (a :: * -> *)      :: *
 
 class IsArray f where array :: Iso (f t a) (f t' a') (Array (ShapeOf f) t a) (Array (ShapeOf f) t' a')
@@ -60,9 +60,12 @@ shapeOf _ = natLstVal (Proxy :: Proxy (ShapeOf f))
 
 
 -- array info instances
-type instance ShapeOf (Array shape)   = shape
+type instance ShapeOf (Array shape)     = shape
+type instance ShapeOf (Array shape t)   = shape
+type instance ShapeOf (Array shape t a) = shape
 type instance TypeOf  (Array shape t) = t
 
+--TODO: color from Vector! 
 -- math relations instances
 type instance ProductOf (Array sh t a) (Array sh t b) = Array sh t (ProductOf a b)
 
@@ -90,11 +93,11 @@ class IsList' l where
 
 -- === Reshape ===
 
-type family   Reshaped (sh :: [Nat]) (f :: * -> * -> *) :: * -> * -> *
-type instance Reshaped nsh (Array sh) = Array nsh
+--type family   Reshaped (sh :: [Nat]) (f :: * -> * -> *) :: * -> * -> *
+--type instance Reshaped nsh (Array sh) = Array nsh
 
-class Reshape sh f t where unsafeReshape :: Proxy sh -> f t a -> Reshaped sh f t a
-                           reshape       :: Proxy sh -> f t a -> Reshaped sh f t a
+--class Reshape sh f t where unsafeReshape :: Proxy sh -> f t a -> Reshaped sh f t a
+--                           reshape       :: Proxy sh -> f t a -> Reshaped sh f t a
 
 
 -- === ExtractDim ===
@@ -183,7 +186,7 @@ instance ( w ~ h', t ~ t', Mul a b, IsList (Matrix w h t a), IsList (Matrix w' h
 
 -- utils instances
 
-instance IsArray (Matrix w h) where array = polyWrapped
+instance IsArray (Matrix w h) where array = wrapped
 
 instance Rewrapped (Matrix w h t a) (Matrix w h t' a')
 instance Wrapped   (Matrix w h t a) where
@@ -233,7 +236,7 @@ type instance TypeOf  (XForm dim t) = t
 deriving instance Show (Unwrapped (XForm dim t a)) => Show    (XForm dim t a)
 deriving instance Functor (Matrix dim dim t)       => Functor (XForm dim t)
 
-instance IsArray (XForm dim) where array = polyWrapped . array
+instance IsArray (XForm dim) where array = wrapped . array
 
 instance Rewrapped (XForm dim t a) (XForm dim' t' a')
 instance Wrapped   (XForm dim t a) where
@@ -260,8 +263,6 @@ type BVec dim = Vector dim Boxed
 type instance ShapeOf (Vector dim)   = '[dim]
 type instance TypeOf  (Vector dim t) = t
 
---class IsVector a where
---    vector :: 
 
 -- class instances
 
@@ -273,7 +274,7 @@ instance Wrapped   (Vector dim t a) where
     type Unwrapped (Vector dim t a) = Array '[dim] t a
     _Wrapped' = iso (\(Vector a) -> a) Vector
 
-instance IsArray (Vector t) where array = polyWrapped
+instance IsArray (Vector t) where array = wrapped
 
 instance (IsList d, Monoid (Item d), KnownNat dim, d ~ Unwrapped (Vector dim t a))
       => Monoid (Vector dim t a) where
@@ -410,7 +411,7 @@ instance Wrapped   (Array sh Boxed a) where
     type Unwrapped (Array sh Boxed a) = (V.Vector a)
     _Wrapped' = iso (\(B_Array a) -> a) B_Array
 
-instance Reshape nsh (Array sh) Boxed where unsafeReshape _ (B_Array a) = B_Array a 
+--instance Reshape nsh (Array sh) Boxed where unsafeReshape _ (B_Array a) = B_Array a 
 
 instance IsList' (Array sh Boxed a) where
     fromList' = view unwrapped . fromList

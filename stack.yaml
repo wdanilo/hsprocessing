@@ -15,8 +15,7 @@ packages:
   - /Users/wdanilo/dev/hs/libs/prologue
   - /Users/wdanilo/dev/hs/libs/data-rtuple
   - /Users/wdanilo/dev/hs/libs/typelevel
-
-  - third-party/jsaddle
+  - /Users/wdanilo/dev/hs/libs/jsaddle
 
 extra-deps:
   - ghcjs-dom-0.2.2.0

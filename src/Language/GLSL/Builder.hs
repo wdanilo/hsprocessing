@@ -22,7 +22,7 @@ import           GHC.TypeLits                   (Nat)
 import qualified Control.Monad.State           as State
 import           GHC.TypeLits
 import           Control.Monad.State           (State, runState, evalState, execState, get, put)
-import           Data.Array.Linear.Color
+import           Data.Array.Linear.Color.Class
 
 --import qualified Data.Array.Repa as Repa
 --import           Data.Array.Repa hiding (Shape)
@@ -421,6 +421,14 @@ main = do
 
     let pps = prettyShow s1
 
+
+    let c = RGB $ fromList [1,2,3] :: Color RGB Float
+        d = c & (wrapped' . A.x) .~ 10 
+        e = c & wrapped .~ (fromList [1,2,3]) :: Color RGB Int
+
+
+    print d
+    print e
 
     --let myv = vec3' 7 2 3 :: Vec' 3 Float
     --let myvE = vec1' "oh" :: Vec' 1 Expr

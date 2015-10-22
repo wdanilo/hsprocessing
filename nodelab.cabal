@@ -26,10 +26,14 @@ executable nodelab
                       , GeneralizedNewtypeDeriving
                       , DeriveDataTypeable
                       , ScopedTypeVariables
+                      , NoImplicitPrelude
 
   other-modules:     Language.GLSL.Builder
                      Data.Array.Linear
                      Data.Array.Linear.Color
+                     Data.Array.Linear.Color.Attrs
+                     Data.Array.Linear.Color.Class
+                     Data.Array.Linear.Properties
 
   build-depends:       base >= 4.8 && < 4.9
                      , ghcjs-base
