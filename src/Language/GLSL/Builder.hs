@@ -357,12 +357,10 @@ data Pattern = Solid (Color RGBA Float) deriving (Show)
 data Material a = Material [a] deriving (Show)
 
 instance a ~ Flat => Default (Material a) where
-    def = Material [ Fill        . Solid $ color4 0.7 0.4 0.0 1.0
-                   , Border 10   . Solid $ color4 0.0 1.0 0.0 1.0
-                   , Border 4    . Solid $ color4 0.0 0.0 1.0 1.0
-                   , Shadow 10 2 . Solid $ color4 0.0 0.0 0.0 0.2
-                   ]
+    def = Material mempty
 
+class HasMaterial a where
+    material :: Lens' a (Material Flat)
 
 -- === Material.Layer.Flat ===
 
@@ -391,6 +389,9 @@ data Boolean a = B_Value a
                deriving (Show)
 
 
+instance HasMaterial (Object a) where 
+    material = lens (\(Object _ m _) -> m) (\(Object t _ a) m -> Object t m a)
+
 b1 :: Shape
 b1 = object $ ball (100.0 :: Expr)
 
@@ -398,12 +399,19 @@ b1 = object $ ball (100.0 :: Expr)
 
 data Ball a = Ball a deriving (Show)
 
-instance ToSDF Ball Expr where toSDF (Ball r) = ball r
+
+instance Convertible a Expr => ToSDF (Ball a) Expr where
+    toSDF (Ball r) = SDF $ \v -> "sdf_ball" [convert v, convert r]
+
+instance ToSDF (SDF a) a where
+    toSDF = id
 
 ---------------------
 
 class ToSDF t a where
-    toSDF :: t a -> SDF a
+    toSDF :: t -> SDF a
+
+
 
 ---------------------
 
@@ -419,14 +427,16 @@ instance Convertible (Color RGBA Float) Expr where
 
 
 
-instance MonadGLSL m => GLSLBuilder Shape m where
-    buildGLSL (Object xform (Material layers) (B_Value sdf)) = do
+instance (MonadGLSL m, ToSDF a Expr) => GLSLBuilder (Object a) m where
+    buildGLSL (Object xform (Material layers) (B_Value obj)) = do
+
+        let sdf = toSDF obj
         
         p      <- getPosition
         
         
         color  <- getColor
-        gstart <- newName "sdfxx"
+        gstart <- newName "sdf"
 
 
         let drawPattern = \case 
