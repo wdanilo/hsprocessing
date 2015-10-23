@@ -223,9 +223,10 @@ main = do
             canvas <- getCanvas
             ctx    <- myInitGL canvas
             liftIO $ jsRegisterGL (castRef ctx) -- REMOVE ME
-            liftIO js_test
-            ctx ^. clearColor (0.0 :: Float) (0.0 :: Float) (0.0 :: Float) (1.0 :: Float)
+            ctx ^. clearColor (0.0 :: Float) (0.3 :: Float) (0.0 :: Float) (1.0 :: Float)
             ctx ^. enable (ctx ^. js_DEPTH_TEST)
+            liftIO js_test
+            
             program <- initShaders (pack fullShader)
 
             let g = triangular [  0.0,  1.0,  0.0
@@ -470,21 +471,16 @@ shader_header = [s|#extension GL_OES_standard_derivatives : enable
     }
 
 
-    float sdf_circle(vec2 p, float radius) {
-        return length(p) - radius;
-    }
-
-    float sdf_circle(vec2 p, float radius, float angle) {
-        return sdf_subtract(sdf_pie(p, angle), sdf_circle(p,radius));
-    }
-
-
     float sdf_ball(vec2 p, float radius) {
         return length(p) - radius;
     }
 
     float sdf_ball(vec2 p, float radius, float angle) {
         return sdf_subtract(sdf_pie(p, angle), sdf_ball(p,radius));
+    }
+
+    float sdf_sphere(vec2 p, float radius) {
+        return abs(sdf_ball(p,radius));
     }
 
     float sdf_ellipse(vec2 p, float a, float b) {
@@ -511,7 +507,7 @@ shader_header = [s|#extension GL_OES_standard_derivatives : enable
     float sdf_ring(vec2 p, float radius, float width) {
         width /= 2.0;
         radius -= width;
-        return abs(sdf_circle(p, radius)) - width;
+        return abs(sdf_ball(p, radius)) - width;
     }
 
     float sdf_ring(vec2 p, float radius, float width, float angle) {
@@ -569,10 +565,14 @@ shader_header = [s|#extension GL_OES_standard_derivatives : enable
     }
 
 
+    // float sdf_borderOut(float width, float p) {
+    //     float alpha1 = clamp(p);
+    //     float alpha2 = clamp(p - width);
+    //     return sdf_subtract (sdf_shrink(width,p),p);
+    // }
+
     float sdf_borderOut(float width, float p) {
-        float alpha1 = clamp(p);
-        float alpha2 = clamp(p - width);
-        return sdf_subtract (sdf_shrink(width,p),p);
+        return sdf_subtract (p + 0.5,sdf_grow(width,p));
     }
 
     float sdf_borderIn(float width, float p) {
@@ -581,8 +581,8 @@ shader_header = [s|#extension GL_OES_standard_derivatives : enable
         return sdf_subtract (p,sdf_grow(width,p));
     }
 
-    vec4 sdf_shadow(float p, float width, float intensity, float exp) {
-        return vec4(0.0,0.0,0.0,pow(1.0-clamp(p/width),exp) * intensity);
+    float sdf_shadow(float p, float width, float exp) {
+        return pow(1.0-clamp(p/width),exp);
     }
 
     
@@ -634,12 +634,18 @@ shader_header = [s|#extension GL_OES_standard_derivatives : enable
     }
 
 
-    
+    vec2 appTrans2D (vec2 p, mat4 xform) {
+        return (xform * vec4(p,0.0,1.0)).xy;
+    }
 
+    float bismooth (float a, float exp) {
+        if (a > 0.5) { return 1.0 - pow((1.0 - a) * 2.0, exp)/2.0; } 
+        else         { return pow(a * 2.0, exp)/2.0;               }
+    }
 
-
-    
-
+    vec3 smoothMerge (float d1, float d2, vec3 c1, vec3 c2, float width) {
+        return mix (c1,c2,bismooth(clamp((d1-d2+2.0*width)/(4.0*width)),2.0));
+    }
 |]
 
 type Type = String

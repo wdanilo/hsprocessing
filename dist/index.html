@@ -116,12 +116,16 @@
     }
 
 
-    float sdf_circle(vec2 p, float radius) {
+    float sdf_ball(vec2 p, float radius) {
         return length(p) - radius;
     }
 
-    float sdf_circle(vec2 p, float radius, float angle) {
-        return sdf_subtract(sdf_pie(p, angle), sdf_circle(p,radius));
+    float sdf_ball(vec2 p, float radius, float angle) {
+        return sdf_subtract(sdf_pie(p, angle), sdf_ball(p,radius));
+    }
+
+    float sdf_sphere(vec2 p, float radius) {
+        return abs(sdf_ball(p,radius));
     }
 
     float sdf_ellipse(vec2 p, float a, float b) {
@@ -148,7 +152,7 @@
     float sdf_ring(vec2 p, float radius, float width) {
         width /= 2.0;
         radius -= width;
-        return abs(sdf_circle(p, radius)) - width;
+        return abs(sdf_ball(p, radius)) - width;
     }
 
     float sdf_ring(vec2 p, float radius, float width, float angle) {
@@ -222,8 +226,8 @@
         return sdf_subtract (p,sdf_grow(width,p));
     }
 
-    vec4 sdf_shadow(float p, float width, float intensity, float exp) {
-        return vec4(0.0,0.0,0.0,pow(1.0-clamp(p/width),exp) * intensity);
+    float sdf_shadow(float p, float width, float exp) {
+        return pow(1.0-clamp(p/width),exp);
     }
 
     
@@ -324,8 +328,8 @@
         // float g2 = sdf_rect (translate(p,vec2(150,160)), vec2 (140.0,100.0), vec4 (0.0,10.0,20.0,70.0));
         float g2  = sdf_rect (translate(p,vec2(150,160)), vec2 (140.0,100.0), vec4 (80.0,20.0,20.0,10.0));
         float g3  = sdf_ellipse (translate(p,vec2(150,160)), 40.0, 20.0);
-        float g4  = sdf_circle  (translate(p,vec2(150,160)), 40.0);
-        float g4x = sdf_circle (translate(p,vec2(150,160)), 60.0, 60.0); 
+        float g4  = sdf_ball  (translate(p,vec2(150,160)), 40.0);
+        float g4x = sdf_ball (translate(p,vec2(150,160)), 60.0, 60.0); 
         float g5  = sdf_ring  (translate(p,vec2(150,160)), 40.0, 3.0);
         float gp  = sdf_pie  (translate(p,vec2(150,160)), 80.0);
     // float sdf_ring(vec2 p, float radius, float angle, float width)
@@ -344,15 +348,18 @@
         // vec4 l2 = vec4(1.0,1.0,1.0, sdf_aa(g-10.0) );
         vec4 l2 = vec4(1.0,1.0,1.0, sdf_aa(sdf_borderOut(10.0,g)) );
         // sdf_borderOut
-        vec4 l3 = sdf_shadow(sdf_borderOut(10.0,g), 20.0, 0.2, 2.0);
+        float l3 = sdf_shadow(sdf_borderOut(10.0,g), 20.0, 2.0);
 
         // gl_FragColor = clamp(col, 0.0, 1.0);
-        gl_FragColor = vec4(0.1,0.1,0.1,1.0);
+        gl_FragColor = vec4(1,0.0,0.0,0.0);
 
-        gl_FragColor = vec4(mix(gl_FragColor.rgb, l3.rgb, l3.a),1.0);
+        // gl_FragColor = vec4(mix(gl_FragColor.rgb, vec3(0.0,0.0,0.0), l3),1.0);
         // gl_FragColor = vec4(mix(gl_FragColor.rgb, gradient_hsv(cartesian2polar(translate(p,vec2(100.0,100.0))),10.0), l2.a),1.0);
-        gl_FragColor = vec4(mix(gl_FragColor.rgb, bc, l2.a),1.0);
-        // gl_FragColor = vec4(mix(gl_FragColor.rgb, l1.rgb, l1.a * 0.6),1.0);
+        // gl_FragColor = vec4(mix(gl_FragColor.rgb, bc, l2.a),1.0);
+        // gl_FragColor = vec4(mix(gl_FragColor.rgb, l1.rgb, l1.a * 0.6),l1.a);
+        // gl_FragColor = vec4(mix(gl_FragColor.rgb, l1.rgb, l1.a * 0.6),l1.a);
+        // gl_FragColor = vec4(mix(gl_FragColor.rgb, l1.rgb, l1.a * 0.6),l1.a);
+        gl_FragColor = l1;
 
     }
 </script>
@@ -545,6 +552,7 @@
     var foo1 = {ala: 12}
 
     function prepareScene(){
+
         // gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
         // mat4.perspective(pMatrix, 45, gl.viewportWidth / gl.viewportHeight, 0.1, 100.0);
@@ -560,6 +568,9 @@
     }
     function test() {
         
+        // TODO: backgound is not transparent
+        gl.enable(gl.BLEND);
+        gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
 
         // mat4.translate(mvMatrix, mvMatrix, [-1.5, 0.0, -7.0]);
         // gl.bindBuffer(gl.ARRAY_BUFFER, triangleVertexPositionBuffer);
@@ -577,6 +588,8 @@
         console.log(available_extensions);
         var ext = gl.getExtension('OES_standard_derivatives');
         console.log(ext);
+
+
     }
 
 

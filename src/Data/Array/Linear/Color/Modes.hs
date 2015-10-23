@@ -1,14 +1,15 @@
 {-# LANGUAGE NoMonomorphismRestriction #-}
-{-# LANGUAGE TypeFamilies #-}
-{-# LANGUAGE DataKinds #-}
+{-# LANGUAGE UndecidableInstances      #-}
+{-# LANGUAGE TypeFamilies              #-}
+{-# LANGUAGE DataKinds                 #-}
 
 
 module Data.Array.Linear.Color.Modes where
 
-import Prologue
-import Data.Array.Linear
-import Data.Array.Linear.Color.Class
-
+import  Prologue
+import  Data.Array.Linear
+import  Data.Array.Linear.Color.Class
+import  Constraint.Container.Homo     (Homo)
 
 -- === Color types ===
 
@@ -25,11 +26,11 @@ newtype instance Color HSVA a = HSVA (BVec 4 a) deriving (Show)
 
 -- === Constructors ===
 
-instance IsColor (a,a,a)   RGB  a where color (r,g,b)   = fromListUnsafe [r,g,b]
-instance IsColor (a,a,a)   HSV  a where color (h,s,v)   = fromListUnsafe [h,s,v]
+instance Homo (t,t2,t3)    => IsColor (t,t2,t3)    RGB  t where color (r,g,b)   = fromListUnsafe [r,g,b]
+instance Homo (t,t2,t3)    => IsColor (t,t2,t3)    HSV  t where color (h,s,v)   = fromListUnsafe [h,s,v]
 
-instance IsColor (a,a,a,a) RGBA a where color (r,g,b,a) = fromListUnsafe [r,g,b,a]
-instance IsColor (a,a,a,a) HSVA a where color (h,s,v,a) = fromListUnsafe [h,s,v,a]
+instance Homo (t,t2,t3,t4) => IsColor (t,t2,t3,t4) RGBA t where color (r,g,b,a) = fromListUnsafe [r,g,b,a]
+instance Homo (t,t2,t3,t4) => IsColor (t,t2,t3,t4) HSVA t where color (h,s,v,a) = fromListUnsafe [h,s,v,a]
 
 
 -- === Wrappers ===

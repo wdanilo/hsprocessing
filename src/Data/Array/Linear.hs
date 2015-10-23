@@ -247,6 +247,8 @@ instance FromListUnsafe (Unwrapped (XForm dim t a)) => FromListUnsafe (XForm dim
 instance ToList (Unwrapped (XForm dim t a)) => ToList (XForm dim t a) where
     toList = toList . view wrapped
 
+
+
 -----------------------------------------------------------------------
 -- Vector
 -----------------------------------------------------------------------
@@ -295,7 +297,7 @@ instance FromListUnsafe (Unwrapped (Vector dim t a)) => FromListUnsafe (Vector d
 
 instance ToList (Unwrapped (Vector dim t a)) => ToList (Vector dim t a) where
     toList = toList . view wrapped
-    
+
 
 -- === Accessors ===
 

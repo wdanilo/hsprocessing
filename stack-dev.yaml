@@ -1,0 +1,75 @@
+resolver: ghcjs-0.2.0.20151001_ghc-7.10.2
+compiler-check: match-exact
+setup-info:
+  ghcjs:
+    source:
+      ghcjs-0.2.0.20151001_ghc-7.10.2:
+        url: "https://github.com/fizruk/ghcjs/releases/download/v0.2.0.20151001/ghcjs-0.2.0.20151001.tar.gz"
+
+packages:
+  - .
+  - /Users/wdanilo/dev/hs/libs/algebraic
+  - /Users/wdanilo/dev/hs/libs/codebuilder
+  - /Users/wdanilo/dev/hs/libs/convert
+  - /Users/wdanilo/dev/hs/libs/data-repr
+  - /Users/wdanilo/dev/hs/libs/prologue
+  - /Users/wdanilo/dev/hs/libs/data-rtuple
+  - /Users/wdanilo/dev/hs/libs/typelevel
+  - /Users/wdanilo/dev/hs/libs/jsaddle
+
+extra-deps:
+  - prologue-1.0.1
+  - convert-1.0
+  - typelevel-1.0.1
+  - ghcjs-dom-0.2.2.0
+  - StateVar-1.1.0.1
+  - adjunctions-4.2.2
+  - base-orphans-0.4.4
+  - bifunctors-5
+  - comonad-4.2.7.2
+  - contravariant-1.3.3
+  - distributive-0.4.4
+  - exceptions-0.8.0.2
+  - free-4.12.1
+  - hslogger-1.2.9
+  - kan-extensions-4.2.3
+  - lens-4.12.3
+  - nats-1
+  - network-2.6.2.1
+  - prelude-extras-0.4.0.2
+  - profunctors-5.1.1
+  - reflection-2
+  - semigroupoids-5.0.0.4
+  - semigroups-0.17.0.1
+  - tagged-0.8.1
+  - transformers-compat-0.4.0.4
+  - void-0.7.1
+  - jsaddle-0.2.2.0
+  - algebraic-0.1.1
+  - transformers-base-0.4.4
+  - data-default-0.5.3
+  - data-default-class-0.0.1
+  - data-default-instances-base-0.0.1
+  - data-default-instances-containers-0.0.1
+  - data-default-instances-dlist-0.0.1
+  - data-default-instances-old-locale-0.0.1
+  - pretty-show-1.6.8.2
+  - haskell-lexer-1.0
+  - data-repr-1.0
+  - generic-deriving-1.8.0
+  - errors-2.0.1
+  - safe-0.3.9
+  - either-4.4.1
+  - MonadRandom-0.4
+  - mmorph-1.0.4
+  - monad-control-1.0.0.4
+  - random-1.1
+  - cond-0.4.1.1
+  - language-glsl-0.2.0
+  - parsec-3.1.9
+  - prettyclass-1.0.0.0
+  - string-qq-0.0.2
+  - QuickCheck-2.8.1
+  - tf-random-0.5
+  - data-rtuple-1.0
+  - split-0.2.2
