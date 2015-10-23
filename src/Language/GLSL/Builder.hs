@@ -379,9 +379,11 @@ data Flat = Fill                  Pattern
 
 -- === Shape ===
 
-data Shape = Shape (A.BQuaternion Float) (Material Flat) (Boolean (SDF Expr)) deriving (Show)
+data Object a = Object (A.BQuaternion Float) (Material Flat) (Boolean a) deriving (Show)
 
+type Shape = Object (SDF Expr)
 
+object = Object mempty def . B_Value
 
 data Boolean a = B_Value a 
                | B_Merge Float Shape Shape
@@ -390,7 +392,18 @@ data Boolean a = B_Value a
 
 
 b1 :: Shape
-b1 = Shape mempty def (B_Value $ ball (100.0 :: Float))
+b1 = object $ ball (100.0 :: Expr)
+
+---------------------
+
+data Ball a = Ball a deriving (Show)
+
+instance ToSDF Ball Expr where toSDF (Ball r) = ball r
+
+---------------------
+
+class ToSDF t a where
+    toSDF :: t a -> SDF a
 
 ---------------------
 
@@ -407,7 +420,7 @@ instance Convertible (Color RGBA Float) Expr where
 
 
 instance MonadGLSL m => GLSLBuilder Shape m where
-    buildGLSL (Shape xform (Material layers) (B_Value sdf)) = do
+    buildGLSL (Object xform (Material layers) (B_Value sdf)) = do
         
         p      <- getPosition
         
@@ -427,7 +440,7 @@ instance MonadGLSL m => GLSLBuilder Shape m where
                         gdraw g = do
                             (fill, glsl) <- drawPattern pattern
                             return $ glsl 
-                                  <> [ color .= "vec4" ["mix" [color .> "rgb", fill .> "rgb", "sdf_aa"[g] * (fill .> "a") ], "sdf_aa"[g]]
+                                  <> [ color .= "vec4" ["mix" [color .> "rgb", fill .> "rgb", "sdf_aa"[g] * (fill .> "a") ], 1.0]
                                      ]
                     return (gtrans, gdraw)
 
@@ -473,41 +486,25 @@ instance MonadGLSL m => GLSLBuilder Shape m where
         (rest <>) . snd <$> drawLayers gstart layers
 
 
-main = do
 
-    let gExpr = flip evalState (mempty :: GLSLState) $ buildGLSL b1
+shapeToGLSL s = prettyShow s1 where
 
-    let local  = "local"
-        dpr    = "dpr"
-        s1 = unit [   func' "main" [ param void ] $ [ val vec3 "local"  $ "world" - "origin" 
-                                                    , val vec3 "ulocal" $ "local" * "dpr"
-                                                    --, val mat4 "xform" $ "mat4" $ fmap convert $ Repa.toList mx1
-                                                    --, val vec4 "ulocal2" $ ("xform" * ("vec4" [0.0, "ulocal"]))
-                                                    --, "ulocal" .= ("ulocal2" .> "xyz")
-                                                    -- , val float "g"     $ "sdf_circle" ["translate" ["p", "vec2" [150,160]], 60.0, 60.0]
-                                                    , val vec2 "p"      $ ("ulocal" .> "xy") - ("vec2" [150.0,150.0])
-                                                    , val vec2 "c"      $ ("dim" .> "xy") / 2.0
-                                                    , val vec2 "z"      $ "p" / ("dim" .> "xy")
-                                                    
-                                                    ] <> gExpr 
-                  ]
+    gExpr = flip evalState (mempty :: GLSLState) $ buildGLSL s
 
-    let pps = prettyShow s1
+    local  = "local"
+    dpr    = "dpr"
+    s1 = unit [   func' "main" [ param void ] $ [ val vec3 "local"  $ "world" - "origin" 
+                                                , val vec3 "ulocal" $ "local" * "dpr"
+                                                , val vec2 "p"      $ ("ulocal" .> "xy")
+                                                , val vec2 "c"      $ ("dim" .> "xy") / 2.0
+                                                , val vec2 "z"      $ "p" / ("dim" .> "xy")
+                                                
+                                                ] <> gExpr 
+              ]
 
 
-    let c = RGB $ fromListUnsafe [1,2,3] :: Color RGB Float
-        d = c & (wrapped' . A.x) .~ 10 
-        e = c & wrapped .~ (fromListUnsafe [1,2,3]) :: Color RGB Int
 
 
-    print d
-    print e
-
-    --let myv = vec3' 7 2 3 :: Vec' 3 Float
-    --let myvE = vec1' "oh" :: Vec' 1 Expr
-    --print $ myv ^. x
-
-    return pps
 
 --instance Unbox Expr
 

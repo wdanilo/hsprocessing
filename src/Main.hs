@@ -4,7 +4,7 @@
 
 
 import           Prelude()
-import           Prologue
+import           Prologue            hiding (Bounded)
 import           Data.JSString.Text  (lazyTextToJSString)
 import           Data.JSString       (unpack, pack, JSString)
 import           GHCJS.DOM           (runWebGUI, postGUISync, postGUIAsync, webViewGetDomDocument)
@@ -84,7 +84,7 @@ foreign import javascript unsafe "window.devicePixelRatio"
 
 clog = liftIO . js_clog
 
-initShaders = liftIO . jsInitShaders
+compileShader = liftIO . jsInitShaders
 initBuffers = liftIO jsInitBuffers
 
 
@@ -178,19 +178,35 @@ triangular = flip Mesh 3
 --instance Dim2 Point2 where y = lens (\(Point2 _ y ) -> y) (\(Point2 x _) y -> Point2 x y)
 
 
-rectGeo w h = triangular [  w,  h,  0
-                         ,  0,  h,  0
-                         ,  w,  0,  0
-                         ,  0,  0,  0
+rectGeo w h = triangular [   w,  h,  0
+                         ,  -w,  h,  0
+                         ,   w, -h,  0
+                         ,  -w, -h,  0
                          ] :: Mesh Float
 
+
+--               w     h
+data Rect = Rect Float Float deriving (Show)
+
+--class Bounded b where
+--    bounds :: b -> Rect
+
+--instance Num a => (Bounded (GLSL.Ball a)) where
+--    bounds (GLSL.Ball r) = Rect (2 * convert r) (2 * r)
+
+data Bounded a = Bounded Rect a deriving (Show)
+
+myBall = Bounded (Rect 300 300) GLSL.b1
 main = do
     --runJSC_ webView $ do
     --    document <- jsg "document"
 
     --let getContext = getProp ("getContext" :: JSString)
 
-    smain <- GLSL.main
+    let Bounded (Rect gw' gh') geo = myBall
+        gw = gw'/2;
+        gh = gh'/2;
+        smain = GLSL.shapeToGLSL geo
 
     print "GENERATED:"
     putStrLn smain
@@ -226,79 +242,69 @@ main = do
             ctx ^. clearColor (0.0 :: Float) (0.3 :: Float) (0.0 :: Float) (1.0 :: Float)
             ctx ^. enable (ctx ^. js_DEPTH_TEST)
             liftIO js_test
-            
-            program <- initShaders (pack fullShader)
 
-            let g = triangular [  0.0,  1.0,  0.0
-                               , -1.0, -1.0,  0.0
-                               ,  1.0, -1.0,  0.0
-                               ] :: Mesh Float
 
-                --g' = mesh [ (0,1), (-1,-1), (1,-1) ]
 
-            buff <- ctx ^. createBuffer
-            ctx ^. js_bindBuffer (ctx ^. js_ARRAY_BUFFER) buff
-            ctx ^. bufferData (ctx ^. js_ARRAY_BUFFER) (new "Float32Array" $ eval $ show $ g ^. vertices) (ctx ^. js_STATIC_DRAW)
 
-            buff ^. js_itemSize <# pToJSRef (g ^. itemSize)
-            buff ^. js_numItems <# pToJSRef (length (g ^. vertices) `quot` g ^. itemSize)
+            program <- compileShader (pack fullShader)
 
 
 
 
 
-            let gw = 300 :: Float
-                gh = 300 :: Float
-                g2 = rectGeo gw gh
+            let makeRectGeo = do
+                    let g2 = rectGeo gw gh
 
-            buff2 <- ctx ^. createBuffer
-            ctx ^. js_bindBuffer (ctx ^. js_ARRAY_BUFFER) buff2
-            ctx ^. bufferData (ctx ^. js_ARRAY_BUFFER) (new "Float32Array" $ eval $ show $ g2 ^. vertices) (ctx ^. js_STATIC_DRAW)
+                    buff2 <- ctx ^. createBuffer
+                    ctx ^. js_bindBuffer (ctx ^. js_ARRAY_BUFFER) buff2
+                    ctx ^. bufferData (ctx ^. js_ARRAY_BUFFER) (new "Float32Array" $ eval $ show $ g2 ^. vertices) (ctx ^. js_STATIC_DRAW)
 
-            buff2 ^. js_itemSize <# pToJSRef (g2 ^. itemSize)
-            buff2 ^. js_numItems <# pToJSRef (length (g2 ^. vertices) `quot` g2 ^. itemSize)
-                    
+                    buff2 ^. js_itemSize <# pToJSRef (g2 ^. itemSize)
+                    buff2 ^. js_numItems <# pToJSRef (length (g2 ^. vertices) `quot` g2 ^. itemSize)
+                            
 
-            let colors = [ 1, 0, 0, 1
-                         , 0, 1, 0, 1
-                         , 0, 0, 1, 1
-                         , 0, 0, 0, 1
-                         ] :: [Float]
+                    let colors = [ 1, 0, 0, 1
+                                 , 0, 1, 0, 1
+                                 , 0, 0, 1, 1
+                                 , 0, 0, 0, 1
+                                 ] :: [Float]
 
-            cbuff <- ctx ^. createBuffer
-            ctx ^. js_bindBuffer (ctx ^. js_ARRAY_BUFFER) cbuff
-            ctx ^. bufferData (ctx ^. js_ARRAY_BUFFER) (new "Float32Array" $ eval $ show $ colors) (ctx ^. js_STATIC_DRAW)
-            cbuff ^. js_itemSize <# (4 :: Int)
-            cbuff ^. js_numItems <# (4 :: Int)
-
-
-            -- koordynaty swiata! powinny uwzgledniac przesuniecie obiektu na scenie!
-            let coords = [ gw, gh, -7
-                         , 0 , gh, -7
-                         , gw, 0 , -7
-                         , 0 , 0 , -7
-                         ] :: [Float]
-
-            coordBuff <- ctx ^. createBuffer
-            ctx ^. js_bindBuffer (ctx ^. js_ARRAY_BUFFER) coordBuff
-            ctx ^. bufferData (ctx ^. js_ARRAY_BUFFER) (new "Float32Array" $ eval $ show $ coords) (ctx ^. js_STATIC_DRAW)
-            coordBuff ^. js_itemSize <# (3 :: Int)
-            coordBuff ^. js_numItems <# (4 :: Int)
+                    cbuff <- ctx ^. createBuffer
+                    ctx ^. js_bindBuffer (ctx ^. js_ARRAY_BUFFER) cbuff
+                    ctx ^. bufferData (ctx ^. js_ARRAY_BUFFER) (new "Float32Array" $ eval $ show $ colors) (ctx ^. js_STATIC_DRAW)
+                    cbuff ^. js_itemSize <# (4 :: Int)
+                    cbuff ^. js_numItems <# (4 :: Int)
 
 
-            let uvs = [ 1, 1
-                      , 0, 1
-                      , 1, 0
-                      , 0, 0
-                      ] :: [Float]
+                    -- koordynaty swiata! powinny uwzgledniac przesuniecie obiektu na scenie!
+                    let coords = [  gw ,  gh , -7
+                                 , -gw ,  gh , -7
+                                 ,  gw , -gh , -7
+                                 , -gw , -gh , -7
+                                 ] :: [Float]
 
-            uvBuff <- ctx ^. createBuffer
-            ctx ^. js_bindBuffer (ctx ^. js_ARRAY_BUFFER) uvBuff
-            ctx ^. bufferData (ctx ^. js_ARRAY_BUFFER) (new "Float32Array" $ eval $ show $ uvs) (ctx ^. js_STATIC_DRAW)
-            uvBuff ^. js_itemSize <# (2 :: Int)
-            uvBuff ^. js_numItems <# (4 :: Int)
+                    coordBuff <- ctx ^. createBuffer
+                    ctx ^. js_bindBuffer (ctx ^. js_ARRAY_BUFFER) coordBuff
+                    ctx ^. bufferData (ctx ^. js_ARRAY_BUFFER) (new "Float32Array" $ eval $ show $ coords) (ctx ^. js_STATIC_DRAW)
+                    coordBuff ^. js_itemSize <# (3 :: Int)
+                    coordBuff ^. js_numItems <# (4 :: Int)
 
 
+                    let uvs = [ 1, 1
+                              , 0, 1
+                              , 1, 0
+                              , 0, 0
+                              ] :: [Float]
+
+                    uvBuff <- ctx ^. createBuffer
+                    ctx ^. js_bindBuffer (ctx ^. js_ARRAY_BUFFER) uvBuff
+                    ctx ^. bufferData (ctx ^. js_ARRAY_BUFFER) (new "Float32Array" $ eval $ show $ uvs) (ctx ^. js_STATIC_DRAW)
+                    uvBuff ^. js_itemSize <# (2 :: Int)
+                    uvBuff ^. js_numItems <# (4 :: Int)
+
+                    return (buff2, cbuff, coordBuff, uvBuff)
+
+            (buff2, cbuff, coordBuff, uvBuff) <- makeRectGeo
 
             --gl.uniform2f(program.offsetUniform, offset[0], offset[1]);
 
@@ -334,7 +340,7 @@ main = do
 
 
 
-            mat4  ^. js_translate posMx posMx (eval $ show $ ([0.0, 0.0, -7.0] :: [Float]))
+            mat4  ^. js_translate posMx posMx (eval $ show $ ([350.0, 350.0, -7.0] :: [Float]))
 
             ctx   ^. js_bindBuffer (ctx ^. js_ARRAY_BUFFER) buff2
             ctx   ^. js_vertexAttribPointer (program ^. js_vertexPositionAttribute)
