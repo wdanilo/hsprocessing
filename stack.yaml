@@ -17,11 +17,14 @@ packages:
   - location:
       git:    https://github.com/wdanilo/data-repr.git
       commit: a725e4dad9b0916514662e917cef692a91a51029
+  - location:
+      git:    https://github.com/wdanilo/typelevel.git
+      commit: 9b3353e5eac53a1733da872edb68c23c0a3a6bf4
 
 extra-deps:
   - prologue-1.0.1
   - convert-1.0
-  - typelevel-1.0.1
+  - typelevel-1.0.2
   - data-repr-1.0.1
   - ghcjs-dom-0.2.2.0
   - StateVar-1.1.0.1
