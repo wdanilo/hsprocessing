@@ -48,7 +48,9 @@ import Math.Space.Metric.SDF
 import Graphics.Shading.Material
 import Graphics.Shading.Flat
 import Graphics.Shading.Pattern
-import Graphics.Display.Object
+import qualified Graphics.Display.Object as O
+import Graphics.Rendering.GLSL.SDF (object, Object)
+
 
 --import Language.Haskell.TH
 --import Language.Haskell.TH.Quote
@@ -226,11 +228,12 @@ rectGeo w h = triangular [   w,  h,  0
 mtl      = Material $ [ Fill            . Solid $ color4 0.7 0.2 0.2 1.0 
                       , Border 10.0     . Solid $ color4 0.0 1.0 0.0 1.0
                       , Shadow 10.0 2.0 . Solid $ color4 0.0 0.0 0.0 0.2
-                      ] 
+                      ] :: Material (Layer GLSL.Expr)
                         -- <> ( flip fmap [100,80..10] $ \(fromIntegral -> i) -> GLSL.Border (sqrt i) . GLSL.Solid $ color4 (mod' (i*3/17) 1) (mod' (i*5/17) 1) (mod' (i*7/17) 1) 1.0 )
 
-myBall :: Bounded Float (Composite (Object (Layer GLSL.Expr))  (SDF 2)) GLSL.Expr
-myBall = Bounded (A.vec2 400 400) (GLSL.object $ (convert $ (ball (100.0 :: GLSL.Expr) :: Dim 2 Ball GLSL.Expr) :: SDF 2 GLSL.Expr))
+--myBall :: Bounded Float (Object (Layer GLSL.Expr) (Compound (SDF 2))) GLSL.Expr
+myBall :: Bounded Float (Object 2)
+myBall = Bounded (A.vec2 400 400) (object $ (convert $ (ball (100.0 :: GLSL.Expr) :: Dim 2 Ball GLSL.Expr) :: SDF 2 GLSL.Expr))
        & material .~ mtl
 
 
@@ -239,10 +242,10 @@ myBall = Bounded (A.vec2 400 400) (GLSL.object $ (convert $ (ball (100.0 :: GLSL
 --ss HasMaterial t where
 --    material :: Lens' (t a) (Material a)
 
-instance GLSL.GLSLBuilder (t a) m => GLSL.GLSLBuilder (Bounded b t a) m where
+instance GLSL.GLSLBuilder t m => GLSL.GLSLBuilder (Bounded b t) m where
     buildGLSL (Bounded _ a) = GLSL.buildGLSL a
 
-instance HasMaterial (t a) => HasMaterial (Bounded b t a) where 
+instance HasMaterial t => HasMaterial (Bounded b t) where 
     material = bounded . material
 
 

@@ -14,7 +14,7 @@ module Language.GLSL.Builder where
 import           Prelude                        ()
 import           Prologue                       hiding (div, (.>), (.=), void)
 import           Language.GLSL                  ()
-import           Language.GLSL.Syntax
+import           Language.GLSL.Syntax           hiding (Compound)
 import           Text.PrettyPrint.HughesPJClass (prettyShow, Pretty)
 import           Data.String                    (IsString, fromString)
 import qualified Data.Char as Char
@@ -48,7 +48,7 @@ import Data.RTuple
 
 import Language.GLSL.DSL
 
-import Math.Algebra.Boolean hiding (Expr)
+import Math.Algebra.Boolean hiding (Expr, Compound)
 import qualified Math.Algebra.Boolean as Bool
 import Math.Space.Metric.SDF
 import Math.Topology.Geometry.Figures
@@ -56,10 +56,9 @@ import Math.Space.Dimension (Dim(..), DimOf)
 import Graphics.Shading.Material
 import Graphics.Shading.Flat
 import Graphics.Shading.Pattern
-import Graphics.Display.Object
+import Graphics.Rendering.GLSL.SDF
 
-instance (Convertible a Expr, KnownNat dim) => Convertible (A.BVec dim a) Expr where
-    convert v = fromString ("vec" <> show (natVal (Proxy :: Proxy dim))) $ fmap convert $ toList v
+import qualified Graphics.Display.Object as O
 
 
 
@@ -152,8 +151,6 @@ type F_Radius = Float
 --object :: (Num a, Monad t) => t a -> BoolObject t a
 --object = Object . Shaded def . Transformed mempty . lift
 
-object :: SDF 2 Expr -> Composite (Object (Layer Expr)) (SDF 2) Expr
-object = Object . Shaded def . Transformed mempty . Bool.Expred . Bool.Val
 
 
 
@@ -164,8 +161,8 @@ object = Object . Shaded def . Transformed mempty . Bool.Expred . Bool.Val
 
 
 
-type instance DimOf (Shaded l t) = DimOf t
-type instance DimOf (Transformed t) = DimOf t
+
+
 
 
 ---------------------
@@ -194,9 +191,8 @@ instance Convertible a Expr => Convertible (Color RGBA a) Expr where
 
 
 
-instance (Convertible (t a) (SDF 2 Expr), MonadGLSL m, Convertible a Expr)
-      => GLSLBuilder (Composite (Object (Layer a)) t a) m where
-    buildGLSL (Object (Shaded (Material layers) (Transformed xform (Bool.Expred (Bool.Val obj))))) = do
+instance MonadGLSL m => GLSLBuilder (Object 2) m where
+    buildGLSL (Object (O.Object (Shaded (Material layers) (Transformed xform (Bool.Compound (Bool.Val obj)))))) = do
 
         let sdf = convert obj :: SDF 2 Expr
         

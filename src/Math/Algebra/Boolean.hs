@@ -13,12 +13,12 @@ data Expr a = Val a
             | Expr  (Boolean (Expr a))
             deriving (Show, Functor)
 
-newtype Expred t a = Expred (Expr (t a)) deriving (Show, Functor)
+newtype Compound t a = Compound (Expr (t a)) deriving (Show, Functor)
 
-instance Applicative Expr
-instance Monad Expr where
-	return = Val
+--instance Applicative Expr
+--instance Monad Expr where
+--	return = Val
 	-- >>== : TODO[WD]
 
-instance MonadTrans Expred where
-	lift = Expred . Val
+--instance MonadTrans Compound where
+--	lift = Compound . Val

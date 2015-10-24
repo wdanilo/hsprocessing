@@ -31,8 +31,7 @@ executable nodelab
                       , DataKinds
                       , TypeFamilies
 
-  other-modules:     Language.GLSL.Builder
-                     Data.Array.Linear
+  other-modules:     Data.Array.Linear
                      Data.Array.Linear.Color
                      Data.Array.Linear.Color.Attrs
                      Data.Array.Linear.Color.Attrs.RGBA
@@ -40,7 +39,28 @@ executable nodelab
                      Data.Array.Linear.Color.Class
                      Data.Array.Linear.Color.Modes
                      Data.Array.Linear.Properties
+                     Graphics.Display.Object
+                     Graphics.Rendering.GLSL.SDF
+                     Graphics.Shading.Flat
+                     Graphics.Shading.Material
+                     Graphics.Shading.Pattern
+                     Language.GLSL.Builder
+                     Language.GLSL.DSL
+                     Math.Algebra.Boolean
+                     Math.Space.Banach
                      Math.Space.Dimension
+                     Math.Space.Hilbert
+                     Math.Space.InnerProduct
+                     Math.Space.LocallyConvex
+                     Math.Space.Metric
+                     Math.Space.Metric.Bounded
+                     Math.Space.Metric.SDF
+                     Math.Space.NormedVector
+                     Math.Space.Topological
+                     Math.Space.Vector
+                     Math.Topology.Geometry
+                     Math.Topology.Geometry.Figures
+
 
   build-depends:       base >= 4.8 && < 4.9
                      , ghcjs-base

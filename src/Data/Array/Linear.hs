@@ -26,6 +26,13 @@ import Data.List.Split (chunksOf)
 import Type.List (RemovedIdx, ElAt)
 
 import Data.Array.Linear.Properties as X
+import Math.Space.Dimension (DimOf)
+
+
+
+-----------------------------------------------------------------------
+-- Array Types -- TODO: refactor out
+-----------------------------------------------------------------------
 
 data Boxed   = Boxed deriving (Show)
 data Unboxed = Uboxed deriving (Show)
@@ -215,6 +222,9 @@ data Transformed t a = Transformed (BQuaternion a) (t a) deriving (Show, Functor
 type instance ShapeOf (XForm dim)     = '[dim,dim]
 type instance TypeOf  (XForm dim t)   = t
 type instance Item    (XForm dim t a) = a
+
+type instance DimOf (Transformed t a) = DimOf (t a)
+
 
 deriving instance Show        (Matrix dim dim t a) => Show        (XForm dim t a)
 deriving instance Functor     (Matrix dim dim t)   => Functor     (XForm dim t)

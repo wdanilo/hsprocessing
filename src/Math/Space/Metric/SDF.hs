@@ -14,8 +14,8 @@ import Math.Space.Dimension
 
 newtype SDF dim a = SDF { runSDF :: BVec dim a -> a }
 
-type IsSDF t a = Convertible (t a) (SDF (DimOf t) a)
+type IsSDF t a = Convertible (t a) (SDF (DimOf (t a)) a)
 
-type instance DimOf (SDF dim) = dim
+type instance DimOf (SDF dim a) = dim
 
 instance Show (SDF dim a) where show _ = "SDF"
