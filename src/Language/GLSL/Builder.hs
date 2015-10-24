@@ -42,6 +42,7 @@ import qualified Data.Vector as V
 --import qualified Data.Array.Repa.Repr.Vector as Repa
 
 import qualified Data.Array.Linear as A
+import           Data.Array.Linear (Transformed(..))
 
 import Data.RTuple
 
@@ -52,8 +53,10 @@ import qualified Math.Algebra.Boolean as Bool
 import Math.Space.Metric.SDF
 import Math.Topology.Geometry.Figures
 import Math.Space.Dimension (Dim(..), DimOf)
-
-
+import Graphics.Shading.Material
+import Graphics.Shading.Flat
+import Graphics.Shading.Pattern
+import Graphics.Display.Object
 
 instance (Convertible a Expr, KnownNat dim) => Convertible (A.BVec dim a) Expr where
     convert v = fromString ("vec" <> show (natVal (Proxy :: Proxy dim))) $ fmap convert $ toList v
@@ -133,92 +136,46 @@ getColor    = view colorx   <$> getStdUniforms
 
 
 
--- === Pattern ===
-
-data Pattern a = Solid (Color RGBA a) deriving (Show, Functor, Traversable, Foldable)
-          -- | Gradient
-
--- === Material ===
-
-data Material a = Material [Layer a] deriving (Show, Functor, Traversable, Foldable)
-
-instance Default (Material a) where
-    def = Material mempty
-
-class HasMaterial t where
-    material :: Lens' (t a) (Material a)
 
 -- === Material.Layer.Flat ===
 
 type F_Radius = Float
-type F_Exp    = Float
-
-data Layer a = Fill           (Pattern a)
-             | Border a       (Pattern a)
-             | Shadow a F_Exp (Pattern a)
-             deriving (Show, Functor, Traversable, Foldable)
 
 
 
 
--- === Shape ===
 
 
 
---data Object t a = Object (A.BQuaternion a) (Material a) (Bool.Expr t) deriving (Show)
---type Shape a = Object (SDF Expr) a
---object = Object mempty def . return
 
-
-data Transformed t a = Transformed (A.BQuaternion a) (t a) deriving (Show, Functor, Traversable, Foldable)
-data Shaded      t a = Shaded      (Material a)      (t a) deriving (Show, Functor, Traversable, Foldable)
-
-newtype Object     t a = Object (Shaded (Transformed t) a) deriving (Show, Functor, Traversable, Foldable)
---newtype BoolObject t a = BoolObject (Object t (Bool.Expr a)) deriving (Show, Functor, Traversable, Foldable)
-type BoolObject t = Object (Bool.Expred t)
-
---data Object t a = Object (A.BQuaternion a) (Material a) (Bool.Expr t) deriving (Show)
-
-type Shape a = Object (SDF 2)
-
-
-type instance DimOf (Object t) = DimOf t
 
 --object :: (Num a, Monad t) => t a -> BoolObject t a
 --object = Object . Shaded def . Transformed mempty . lift
 
-object :: SDF 2 Expr -> BoolObject (SDF 2) Expr
+object :: SDF 2 Expr -> Composite (Object (Layer Expr)) (SDF 2) Expr
 object = Object . Shaded def . Transformed mempty . Bool.Expred . Bool.Val
 
 
-instance HasMaterial (Shaded t) where
-   material = lens (\(Shaded m _) -> m) (\(Shaded _ t) m -> Shaded m t)
-
-instance HasMaterial (Object t) where
-   material = wrapped . material
 
 
 
-instance Rewrapped (Object t a) (Object t' a')
-instance Wrapped   (Object t a) where
-    type Unwrapped (Object t a) = Shaded (Transformed t) a
-    _Wrapped' = iso (\(Object a) -> a) Object
 
 
 
-type instance DimOf (Shaded t) = DimOf t
+
+
+type instance DimOf (Shaded l t) = DimOf t
 type instance DimOf (Transformed t) = DimOf t
 
 
 ---------------------
 
 
-instance Convertible a Expr => Convertible (Dim 2 Ball a) (SDF 2 Expr) where
+instance (Convertible a Expr, n ~ 2) => Convertible (Dim 2 Ball a) (SDF n Expr) where
     convert (Dim (Ball r)) = SDF $ \v -> "sdf_ball" [convert v, convert r]
 
 
 ---------------------
-
 
 
 
@@ -238,7 +195,7 @@ instance Convertible a Expr => Convertible (Color RGBA a) Expr where
 
 
 instance (Convertible (t a) (SDF 2 Expr), MonadGLSL m, Convertible a Expr)
-      => GLSLBuilder (BoolObject t a) m where
+      => GLSLBuilder (Composite (Object (Layer a)) t a) m where
     buildGLSL (Object (Shaded (Material layers) (Transformed xform (Bool.Expred (Bool.Val obj))))) = do
 
         let sdf = convert obj :: SDF 2 Expr

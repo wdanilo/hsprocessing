@@ -45,6 +45,10 @@ import Math.Topology.Geometry.Figures (Ball(..), Rect(..), ball)
 import Math.Space.Metric.Bounded
 import Math.Space.Dimension (Dim)
 import Math.Space.Metric.SDF
+import Graphics.Shading.Material
+import Graphics.Shading.Flat
+import Graphics.Shading.Pattern
+import Graphics.Display.Object
 
 --import Language.Haskell.TH
 --import Language.Haskell.TH.Quote
@@ -219,15 +223,15 @@ rectGeo w h = triangular [   w,  h,  0
 --    bounds = lens (\(Bounded r a) -> r) (\(Bounded _ a) r -> Bounded r a)
 
 
-mtl      = GLSL.Material $ [ GLSL.Fill            . GLSL.Solid $ color4 0.7 0.2 0.2 1.0 
-                           , GLSL.Border 10.0     . GLSL.Solid $ color4 0.0 1.0 0.0 1.0
-                           , GLSL.Shadow 10.0 2.0 . GLSL.Solid $ color4 0.0 0.0 0.0 0.2
-                           ] 
+mtl      = Material $ [ Fill            . Solid $ color4 0.7 0.2 0.2 1.0 
+                      , Border 10.0     . Solid $ color4 0.0 1.0 0.0 1.0
+                      , Shadow 10.0 2.0 . Solid $ color4 0.0 0.0 0.0 0.2
+                      ] 
                         -- <> ( flip fmap [100,80..10] $ \(fromIntegral -> i) -> GLSL.Border (sqrt i) . GLSL.Solid $ color4 (mod' (i*3/17) 1) (mod' (i*5/17) 1) (mod' (i*7/17) 1) 1.0 )
 
-myBall :: Bounded Float (GLSL.BoolObject (SDF 2)) GLSL.Expr
+myBall :: Bounded Float (Composite (Object (Layer GLSL.Expr))  (SDF 2)) GLSL.Expr
 myBall = Bounded (A.vec2 400 400) (GLSL.object $ (convert $ (ball (100.0 :: GLSL.Expr) :: Dim 2 Ball GLSL.Expr) :: SDF 2 GLSL.Expr))
-       & GLSL.material .~ mtl
+       & material .~ mtl
 
 
 
@@ -238,8 +242,8 @@ myBall = Bounded (A.vec2 400 400) (GLSL.object $ (convert $ (ball (100.0 :: GLSL
 instance GLSL.GLSLBuilder (t a) m => GLSL.GLSLBuilder (Bounded b t a) m where
     buildGLSL (Bounded _ a) = GLSL.buildGLSL a
 
-instance GLSL.HasMaterial t => GLSL.HasMaterial (Bounded b t) where 
-    material = bounded . GLSL.material
+instance HasMaterial (t a) => HasMaterial (Bounded b t a) where 
+    material = bounded . material
 
 
 --class MaterialCompiler a where

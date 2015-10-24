@@ -208,6 +208,8 @@ type    Quaternion             = XForm 4
 
 type BQuaternion = Quaternion Boxed
 
+data Transformed t a = Transformed (BQuaternion a) (t a) deriving (Show, Functor, Traversable, Foldable)
+
 -- basic instances 
 
 type instance ShapeOf (XForm dim)     = '[dim,dim]
