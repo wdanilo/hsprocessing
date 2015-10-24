@@ -143,10 +143,10 @@ type instance ShapeOf (Matrix w h)     = '[w,h]
 type instance TypeOf  (Matrix w h t)   = t
 type instance Item    (Matrix w h t a) = a
 
--- derivings
-
-deriving instance Show    (Array '[w,h] t a) => Show    (Matrix w h t a)
-deriving instance Functor (Array '[w,h] t)   => Functor (Matrix w h t)
+deriving instance Show        (Array '[w,h] t a) => Show        (Matrix w h t a)
+deriving instance Functor     (Array '[w,h] t)   => Functor     (Matrix w h t)
+deriving instance Foldable    (Array '[w,h] t)   => Foldable    (Matrix w h t)
+deriving instance Traversable (Array '[w,h] t)   => Traversable (Matrix w h t)
 
 -- math relations instances
 
@@ -208,9 +208,16 @@ type    Quaternion             = XForm 4
 
 type BQuaternion = Quaternion Boxed
 
+-- basic instances 
+
 type instance ShapeOf (XForm dim)     = '[dim,dim]
 type instance TypeOf  (XForm dim t)   = t
 type instance Item    (XForm dim t a) = a
+
+deriving instance Show        (Matrix dim dim t a) => Show        (XForm dim t a)
+deriving instance Functor     (Matrix dim dim t)   => Functor     (XForm dim t)
+deriving instance Foldable    (Matrix dim dim t)   => Foldable    (XForm dim t)
+deriving instance Traversable (Matrix dim dim t)   => Traversable (XForm dim t)
 
 -- utils
 
@@ -227,9 +234,6 @@ translation v = fromListUnsafe
 
 -- class instances
 
-deriving instance Show (Unwrapped (XForm dim t a)) => Show    (XForm dim t a)
-deriving instance Functor (Matrix dim dim t)       => Functor (XForm dim t)
-
 instance IsArray (XForm dim) where array = wrapped . array
 
 instance Rewrapped (XForm dim t a) (XForm dim' t' a')
@@ -237,7 +241,7 @@ instance Wrapped   (XForm dim t a) where
     type Unwrapped (XForm dim t a) = Matrix dim dim t a
     _Wrapped' = iso (\(XForm a) -> a) XForm
 
-
+-- FIXME[WD]: Monoid shoudl not require Num a, we should develop an abstract over 0 and 1
 instance (Generated (XForm dim) t, Num a) => Monoid (XForm dim t a) where
     mempty = diagonal 1 0
 
@@ -261,6 +265,11 @@ type instance ShapeOf (Vector dim)     = '[dim]
 type instance TypeOf  (Vector dim t)   = t
 type instance Item    (Vector dim t a) = a
 
+deriving instance Show        (Array '[dim] t a) => Show        (Vector dim t a)
+deriving instance Functor     (Array '[dim] t)   => Functor     (Vector dim t)
+deriving instance Foldable    (Array '[dim] t)   => Foldable    (Vector dim t)
+deriving instance Traversable (Array '[dim] t)   => Traversable (Vector dim t)
+
 -- utils
 
 vec1 :: FromListUnsafe (Vector 1 t a) => a -> Vector 1 t a
@@ -277,9 +286,6 @@ vec4 t1 t2 t3 t4 = fromListUnsafe [t1, t2, t3, t4]
 
 
 -- class instances
-
-deriving instance Show    (Array '[dim] t a) => Show    (Vector dim t a)
-deriving instance Functor (Array '[dim] t)   => Functor (Vector dim t)
 
 instance Rewrapped (Vector dim t a) (Vector dim t' a')
 instance Wrapped   (Vector dim t a) where

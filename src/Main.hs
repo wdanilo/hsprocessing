@@ -35,10 +35,17 @@ import qualified Language.Javascript.JSaddle.String as JS
 import Data.Convert
 import           Data.Array.Linear.Color.Class
 import           Data.Array.Linear.Color.Modes
+import qualified Data.Array.Linear as A
 
 import Data.Fixed (mod')
 
 import Control.Monad.State
+
+import Math.Topology.Geometry.Figures (Ball(..), Rect(..), ball)
+import Math.Space.Metric.Bounded
+import Math.Space.Dimension (Dim)
+import Math.Space.Metric.SDF
+
 --import Language.Haskell.TH
 --import Language.Haskell.TH.Quote
 
@@ -200,36 +207,39 @@ rectGeo w h = triangular [   w,  h,  0
 
 
 --               w     h
-data Rect = Rect Float Float deriving (Show)
-
-data Bounded a = Bounded Rect a deriving (Show)
-
-class HasBounds b where
-    bounds :: Lens' b Rect
-
-instance IsoConvertible a Float => HasBounds (GLSL.Ball a) where
-    bounds = lens (\(GLSL.Ball r) -> Rect (convert r) (convert r)) (\(GLSL.Ball r) (Rect w h) -> GLSL.Ball (convert $ min w h))
-
-instance HasBounds (Bounded a) where
-    bounds = lens (\(Bounded r a) -> r) (\(Bounded _ a) r -> Bounded r a)
 
 
-mtl      = GLSL.Material $ [ GLSL.Fill        . GLSL.Solid $ color4 0.7 0.2 0.2 1.0 
-                           , GLSL.Border 10   . GLSL.Solid $ color4 0.0 1.0 0.0 1.0
+--class HasBounds b where
+--    bounds :: Lens' b Rect
+
+--instance IsoConvertible a Float => HasBounds (Ball a) where
+--    bounds = lens (\(Ball r) -> Rect (convert r) (convert r)) (\(Ball r) (Rect w h) -> Ball (convert $ min w h))
+
+--instance HasBounds (Bounded a) where
+--    bounds = lens (\(Bounded r a) -> r) (\(Bounded _ a) r -> Bounded r a)
+
+
+mtl      = GLSL.Material $ [ GLSL.Fill            . GLSL.Solid $ color4 0.7 0.2 0.2 1.0 
+                           , GLSL.Border 10.0     . GLSL.Solid $ color4 0.0 1.0 0.0 1.0
+                           , GLSL.Shadow 10.0 2.0 . GLSL.Solid $ color4 0.0 0.0 0.0 0.2
                            ] 
-                        <> ( flip fmap [100,80..10] $ \(fromIntegral -> i) -> GLSL.Border (sqrt i) . GLSL.Solid $ color4 (mod' (i*3/17) 1) (mod' (i*5/17) 1) (mod' (i*7/17) 1) 1.0 )
-                        <> [ GLSL.Shadow 10 2 . GLSL.Solid $ color4 0.0 0.0 0.0 0.2 ]
+                        -- <> ( flip fmap [100,80..10] $ \(fromIntegral -> i) -> GLSL.Border (sqrt i) . GLSL.Solid $ color4 (mod' (i*3/17) 1) (mod' (i*5/17) 1) (mod' (i*7/17) 1) 1.0 )
 
-myBall = Bounded (Rect 400 400) (GLSL.object $ GLSL.Ball (100.0 :: GLSL.Expr))
+myBall :: Bounded Float (GLSL.BoolObject (SDF 2)) GLSL.Expr
+myBall = Bounded (A.vec2 400 400) (GLSL.object $ (convert $ (ball (100.0 :: GLSL.Expr) :: Dim 2 Ball GLSL.Expr) :: SDF 2 GLSL.Expr))
        & GLSL.material .~ mtl
 
 
 
-instance GLSL.GLSLBuilder a m => GLSL.GLSLBuilder (Bounded a) m where
+
+--ss HasMaterial t where
+--    material :: Lens' (t a) (Material a)
+
+instance GLSL.GLSLBuilder (t a) m => GLSL.GLSLBuilder (Bounded b t a) m where
     buildGLSL (Bounded _ a) = GLSL.buildGLSL a
 
-instance GLSL.HasMaterial a => GLSL.HasMaterial (Bounded a) where 
-    material = (lens (\(Bounded _ a) -> a) (\(Bounded r _) a -> Bounded r a) :: Lens' (Bounded a) a) . GLSL.material
+instance GLSL.HasMaterial t => GLSL.HasMaterial (Bounded b t) where 
+    material = bounded . GLSL.material
 
 
 --class MaterialCompiler a where
@@ -239,6 +249,8 @@ compileMaterial :: (MonadIO m, GLSL.GLSLBuilder t (State GLSL.GLSLState)) => t -
 compileMaterial obj = do
     let glslMain = GLSL.shapeToGLSL obj
         glsl     = shader_header <> glslMain
+    putStrLn "GENERATED:"
+    putStrLn glslMain
     compileShader (pack glsl)
 
 
@@ -259,17 +271,9 @@ main = do
     --let getContext = getProp ("getContext" :: JSString)
 
     let obj = myBall
-        Rect gw' gh' = obj ^. bounds
+        [gw', gh'] = toList $ obj ^. bounds
         gw = gw'/2;
         gh = gh'/2;
-        smain = GLSL.shapeToGLSL obj
-
-    print "GENERATED:"
-    putStrLn smain
-    print "-----------------"
-
-
-    let fullShader = shader_header <> smain
 
 
     runWebGUI $ \ webView -> do

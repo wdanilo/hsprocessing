@@ -18,10 +18,10 @@ data RGBA
 data HSV
 data HSVA
 
-newtype instance Color RGB  a = RGB  (BVec 3 a) deriving (Show) 
-newtype instance Color HSV  a = HSV  (BVec 3 a) deriving (Show) 
-newtype instance Color RGBA a = RGBA (BVec 4 a) deriving (Show) 
-newtype instance Color HSVA a = HSVA (BVec 4 a) deriving (Show) 
+newtype instance Color RGB  a = RGB  (BVec 3 a) deriving (Show, Functor, Foldable, Traversable) 
+newtype instance Color HSV  a = HSV  (BVec 3 a) deriving (Show, Functor, Foldable, Traversable) 
+newtype instance Color RGBA a = RGBA (BVec 4 a) deriving (Show, Functor, Foldable, Traversable) 
+newtype instance Color HSVA a = HSVA (BVec 4 a) deriving (Show, Functor, Foldable, Traversable) 
 
 
 -- === Constructors ===

@@ -45,198 +45,15 @@ import qualified Data.Array.Linear as A
 
 import Data.RTuple
 
-unit :: [ExternalDeclaration] -> TranslationUnit
-unit = TranslationUnit
+import Language.GLSL.DSL
 
-typeSpec t = TypeSpec Nothing (TypeSpecNoPrecision t Nothing)
+import Math.Algebra.Boolean hiding (Expr)
+import qualified Math.Algebra.Boolean as Bool
+import Math.Space.Metric.SDF
+import Math.Topology.Geometry.Figures
+import Math.Space.Dimension (Dim(..), DimOf)
 
-void  = typeSpec Void
-float = typeSpec Float
-vec2  = typeSpec Vec2
-vec3  = typeSpec Vec3
-vec4  = typeSpec Vec4
-mat4  = typeSpec Mat4
 
-param t = ParameterDeclaration Nothing Nothing t Nothing
-
-var = Variable
-
-sub = Sub
-mul = Mul
-add = Add
-div = Div
-
-app name params = FunctionCall (FuncId name) (Params params)
-
-
-func tp name args body = FunctionDefinition (FuncProt (FullType Nothing tp) name args) (Compound body)
-func' = func void
-
-val tp (Variable name) expr = DeclarationStatement (InitDeclaration (TypeDeclarator (FullType Nothing tp))  [ InitDecl name Nothing (Just expr) ])
-
-
-a .> fields = FieldSelection a fields
-
-assignment a b = ExpressionStatement (Just (Equal a b))
-
-(.=) = assignment
- 
-
---class Assi
---val 
-
-instance IsString Expr where fromString = var
-
-
-instance Fractional Expr where
-    fromRational = FloatConstant . fromRational
-    (/) = div
-
-instance Num Expr where
-    fromInteger = IntConstant Decimal . fromInteger
-    (*) = mul
-    (+) = add
-    (-) = sub
-
-instance Convertible Float Expr where
-    convert = FloatConstant
-
---instance IsString TypeSpecifier where
-    --fromString (s:ss) = typeSpec $ Char.toUpper s : ss
-    --(+), (*), abs, signum, fromInteger, (negate | (-))
-
-
-instance t ~ Expr => IsString ([t] -> Expr) where fromString = app 
-
-
-
-
-
---data Geometry pos  = Geometry pos 
-
---data Shape = Shape 
-
-
---data family V (dim :: Nat) a
---data instance V 1 a = V1 a     deriving (Show)
---data instance V 2 a = V2 a a   deriving (Show)
---data instance V 3 a = V3 a a a deriving (Show)
-
-
-
---xxx :: _ => _
---xxx = V2 1 2
-
-
---type Circle a = Geom 2 (Spherical a)
-
---data Circle a = Circle a
-
---circle :: Float -> Circle Float
---circle = Circle
-
---data Rect   a = Rect   a a
-
-
---data SDF = forall s. IsSDF s => SDF [s]
-
---data family SDF (dim :: Nat) a
-
---data instance SDF 2 a = SDF2 (Expr -> Expr) 
---data instance SDF 2 a = SDF2 Expr deriving (Show)
-
---data Colored a = Colored Color a
---type SDF = Expr -> Expr
-
---class Bounded 
-
---class IsSDF (dim :: Nat) s a where
---    sdf :: (s a) -> SDF dim a
-
---instance Convertible a Expr => IsSDF 2 Ball a where
---    sdf (Ball r) = SDF2 $ \p -> "sdf_circle" [p, convert r]
-
-
----- ===
-
---type family DimensionsOf a :: Choose Nat
-
----- ===
-
---type family Replicate (num :: Nat) a :: [*] where Replicate 0 a = '[]
---                                                  Replicate n a = (a ': Replicate (n-1) a)
-
-
---data Choose a = Only a
---              | OneOf [a]
---              | Any
---              deriving (Show)
-
-
-
----- == Coordinate spaces ===
-
---data Coord_Space coord space dim a = Coord_Space coord (space dim a)
-
---type Coord_Space_Homogeneous   = Coord_Space Homogeneous
---type Coord_Space_Cartesian     = Coord_Space Cartesian
---type Coord_Space_Spherical     = Coord_Space Spherical
---type Coord_Space_Cylindrical s = Coord_Space Cylindrical s 3
-
-
----- === Coordinate systems ===
-
-
---data Homogeneous = Homogeneous
---data Cartesian   = Cartesian
---data Spherical   = Spherical
---data Cylindrical = Cylindrical
-
-
-
----- === Metrics ===
-
---data Discrete  = Discrete
---data Euclidean = Euclidean
---data Taxicab   = Taxicab
-
---data Metric_Space metric dim a = Metric_Space metric (Space dim a) deriving (Show)
-
---type Metric_Space_Discrete  = Metric_Space Discrete
---type Metric_Space_Euclidean = Metric_Space Euclidean
---type Metric_Space_Taxicab   = Metric_Space Euclidean
-
-
----- === Vector Spaces ===
-
-
-
------ === Spaces ===
-
---data Space dim a = Space
-
-
---type Space_R dim = Space dim Rational
---type Space_I dim = Space dim Integer
---type Space_F dim = Space dim Float
-
-
-
---Metric_Space Euclidean 2 Float
-
-
-
---ball :: _ => _
---ball r p = ("sdf_ball" [convert p, convert r] :: Expr)
-
-
---v :: _ => _
-v = fromListUnsafe [1, 2, 3] :: A.BVec 3 Float
-
---linear :: (VecData dim a ~ RTuple t, dim ~ DimOf (RTuple t)) => RTuple t -> Linear dim a 
---linear = Linear
-
-v' = convert v :: Expr
 
 instance (Convertible a Expr, KnownNat dim) => Convertible (A.BVec dim a) Expr where
     convert v = fromString ("vec" <> show (natVal (Proxy :: Proxy dim))) $ fmap convert $ toList v
@@ -244,52 +61,6 @@ instance (Convertible a Expr, KnownNat dim) => Convertible (A.BVec dim a) Expr w
 
 
 
-----------------------------------------------------
-
-data family Tx (dim :: Nat) a
-
-
---data RGB   = RGB Float Float Float deriving (Show)
-
-
-
-
---data Colored       a = Colored     RGB   a deriving (Show, Functor)
-data Bounded     s a = Bounded     s     a deriving (Show, Functor)
-data XFormed     s a = XFormed     [s]   a deriving (Show, Functor) -- [s] => mat4 / mat3 s
-
-
---data XForm = XForm deriving (Show)
-
---data XForm = XForm
---type XForm = Quaternion Float
-
-
---class HasXForm a where xform :: Lens' a XForm
-
---translate :: A.BVec 3 a 
---translate x y z a = Repa.mmultS 
-
-
-
-
---
---newtype Ball   a = Ball   a deriving (Show, Functor)
-
-
---newtype Geom g (dim :: Nat) a = Geom (Tx dim a) 
-
-----deriving instance Show (V dim a) => Show (Geom dim a)
-
---newtype Sphere a = Sphere a deriving (Show, Functor)
-
-
-newtype SDF a = SDF { runSDF :: A.BVec 2 a -> a }
-
-instance Show (SDF a) where show _ = "SDF"
-
-ball :: Convertible r Expr => r -> SDF Expr
-ball r = SDF $ \v -> "sdf_ball" [convert v, convert r]
 
 
 
@@ -297,6 +68,8 @@ ball r = SDF $ \v -> "sdf_ball" [convert v, convert r]
 
 
 
+
+-- === StdUniforms ===
 
 
 data StdUniforms = StdUniforms { _position :: A.BVec 2 Expr 
@@ -304,18 +77,22 @@ data StdUniforms = StdUniforms { _position :: A.BVec 2 Expr
                                } deriving (Show)
 makeLenses ''StdUniforms
 
-data GLSLState = GLSLState { _stdUniforms :: StdUniforms
-                           , _names       :: [String] 
-                           } deriving (Show)
-makeLenses ''GLSLState
+
 
 instance Monoid StdUniforms where
     mempty = StdUniforms { _position = A.vec2 ("p" .> "x") ("p" .> "y")
                          , _colorx   = "gl_FragColor"
                          }
 
-instance Monoid GLSLState where
-    mempty = GLSLState mempty ((\s -> ("_" <> s <> "_")) .: flip (:) <$> ("" : fmap show [0..]) <*> ['a' .. 'z'])
+-- === GLSLState ===
+
+data GLSLState = GLSLState { _stdUniforms :: StdUniforms
+                           , _names       :: [String] 
+                           } deriving (Show)
+makeLenses ''GLSLState
+
+
+-- Instances
 
 class Monad m => MonadGLSL m where
     getState :: m GLSLState
@@ -324,6 +101,12 @@ class Monad m => MonadGLSL m where
 instance MonadGLSL (State GLSLState) where
     getState = get
     putState = put
+
+
+instance Monoid GLSLState where
+    mempty = GLSLState mempty ((\s -> ("_" <> s <> "_")) .: flip (:) <$> ("" : fmap show [0..]) <*> ['a' .. 'z'])
+
+-- Utils
 
 genName' :: MonadGLSL m => m String
 genName' = do
@@ -347,69 +130,96 @@ getPosition = view position <$> getStdUniforms
 getColor    = view colorx   <$> getStdUniforms 
 
 
+
+
+
 -- === Pattern ===
 
-data Pattern = Solid (Color RGBA Float) deriving (Show)
+data Pattern a = Solid (Color RGBA a) deriving (Show, Functor, Traversable, Foldable)
           -- | Gradient
 
 -- === Material ===
 
-data Material a = Material [a] deriving (Show)
+data Material a = Material [Layer a] deriving (Show, Functor, Traversable, Foldable)
 
-instance a ~ Flat => Default (Material a) where
+instance Default (Material a) where
     def = Material mempty
 
-class HasMaterial a where
-    material :: Lens' a (Material Flat)
+class HasMaterial t where
+    material :: Lens' (t a) (Material a)
 
 -- === Material.Layer.Flat ===
 
 type F_Radius = Float
 type F_Exp    = Float
 
-data Flat = Fill                  Pattern
-          | Border F_Radius       Pattern
-          | Shadow F_Radius F_Exp Pattern
-          deriving (Show)
+data Layer a = Fill           (Pattern a)
+             | Border a       (Pattern a)
+             | Shadow a F_Exp (Pattern a)
+             deriving (Show, Functor, Traversable, Foldable)
 
 
 
 
 -- === Shape ===
 
-data Object a = Object (A.BQuaternion Float) (Material Flat) (Boolean a) deriving (Show)
-
-type Shape = Object (SDF Expr)
-
-object = Object mempty def . B_Value
-
-data Boolean a = B_Value a 
-               | B_Merge Float Shape Shape
-               | B_Diff        Shape Shape
-               deriving (Show)
 
 
-instance HasMaterial (Object a) where 
-    material = lens (\(Object _ m _) -> m) (\(Object t _ a) m -> Object t m a)
+--data Object t a = Object (A.BQuaternion a) (Material a) (Bool.Expr t) deriving (Show)
+--type Shape a = Object (SDF Expr) a
+--object = Object mempty def . return
 
-b1 :: Shape
-b1 = object $ ball (100.0 :: Expr)
+
+data Transformed t a = Transformed (A.BQuaternion a) (t a) deriving (Show, Functor, Traversable, Foldable)
+data Shaded      t a = Shaded      (Material a)      (t a) deriving (Show, Functor, Traversable, Foldable)
+
+newtype Object     t a = Object (Shaded (Transformed t) a) deriving (Show, Functor, Traversable, Foldable)
+--newtype BoolObject t a = BoolObject (Object t (Bool.Expr a)) deriving (Show, Functor, Traversable, Foldable)
+type BoolObject t = Object (Bool.Expred t)
+
+--data Object t a = Object (A.BQuaternion a) (Material a) (Bool.Expr t) deriving (Show)
+
+type Shape a = Object (SDF 2)
+
+
+type instance DimOf (Object t) = DimOf t
+
+--object :: (Num a, Monad t) => t a -> BoolObject t a
+--object = Object . Shaded def . Transformed mempty . lift
+
+object :: SDF 2 Expr -> BoolObject (SDF 2) Expr
+object = Object . Shaded def . Transformed mempty . Bool.Expred . Bool.Val
+
+
+instance HasMaterial (Shaded t) where
+   material = lens (\(Shaded m _) -> m) (\(Shaded _ t) m -> Shaded m t)
+
+instance HasMaterial (Object t) where
+   material = wrapped . material
+
+
+
+instance Rewrapped (Object t a) (Object t' a')
+instance Wrapped   (Object t a) where
+    type Unwrapped (Object t a) = Shaded (Transformed t) a
+    _Wrapped' = iso (\(Object a) -> a) Object
+
+
+
+type instance DimOf (Shaded t) = DimOf t
+type instance DimOf (Transformed t) = DimOf t
+
 
 ---------------------
 
-data Ball a = Ball a deriving (Show)
 
+instance Convertible a Expr => Convertible (Dim 2 Ball a) (SDF 2 Expr) where
+    convert (Dim (Ball r)) = SDF $ \v -> "sdf_ball" [convert v, convert r]
 
-instance Convertible a Expr => ToSDF (Ball a) Expr where
-    toSDF (Ball r) = SDF $ \v -> "sdf_ball" [convert v, convert r]
-
-instance ToSDF (SDF a) a where
-    toSDF = id
 
 ---------------------
 
-class ToSDF t a where
-    toSDF :: t -> SDF a
+
 
 
 
@@ -422,15 +232,16 @@ class GLSLBuilder t m where
 --instance Convertible (Color RGBA Float) Expr where
 --    convert c = "vec4" [ cxonvert $ c ^. x, convert $ c ^. y, convert $ c ^. z, convert $ c ^. w ]  
 
-instance Convertible (Color RGBA Float) Expr where
+instance Convertible a Expr => Convertible (Color RGBA a) Expr where
     convert (view wrapped -> c) = "vec4" [ convert $ c ^. A.x, convert $ c ^. A.y, convert $ c ^. A.z, convert $ c ^. A.w ]  
 
 
 
-instance (MonadGLSL m, ToSDF a Expr) => GLSLBuilder (Object a) m where
-    buildGLSL (Object xform (Material layers) (B_Value obj)) = do
+instance (Convertible (t a) (SDF 2 Expr), MonadGLSL m, Convertible a Expr)
+      => GLSLBuilder (BoolObject t a) m where
+    buildGLSL (Object (Shaded (Material layers) (Transformed xform (Bool.Expred (Bool.Val obj))))) = do
 
-        let sdf = toSDF obj
+        let sdf = convert obj :: SDF 2 Expr
         
         p      <- getPosition
         
