@@ -20,6 +20,8 @@ embed _ = Dim
 embed' :: a t -> Dim d a t
 embed' = embed Proxy
 
+convertInDim :: (Convertible a b, DimOf a ~ DimOf b) => a -> b
+convertInDim = convert
 
 
 -- === External instances ===

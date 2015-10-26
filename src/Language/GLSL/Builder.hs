@@ -8,13 +8,14 @@
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ViewPatterns #-}
+{-# LANGUAGE FunctionalDependencies #-}
 
 module Language.GLSL.Builder where
 
 import           Prelude                        ()
-import           Prologue                       hiding (div, (.>), (.=), void)
+import           Prologue                       hiding (Bounded, div, (.>), (.=), void)
 import           Language.GLSL                  ()
-import           Language.GLSL.Syntax           hiding (Compound)
+import           Language.GLSL.Syntax           hiding (Compound, Uniform)
 import           Text.PrettyPrint.HughesPJClass (prettyShow, Pretty)
 import           Data.String                    (IsString, fromString)
 import qualified Data.Char as Char
@@ -26,20 +27,8 @@ import           Control.Monad.State           (State, runState, evalState, exec
 import           Data.Array.Linear.Color.Class
 import           Data.Array.Linear.Color.Modes
 import           Data.Array.Linear.Color.Attrs.RGBA
-
---import qualified Data.Array.Repa as Repa
---import           Data.Array.Repa hiding (Shape)
---import qualified Data.Array.Repa.Matrix as Repa
---import qualified Data.Array.Repa.Repr.Unboxed as Repa
-
---import           Data.Vector.Unboxed (Unbox)
---import           Data.Array.Repa.Matrix (Matrix, Quaternion)
---import qualified Data.Array.Repa.Matrix as Mx
-
+import           Math.Space.Metric.Bounded          (Bounded(..))
 import qualified Data.Vector as V
-
---import qualified Data.Vector.Unboxed as VU
---import qualified Data.Array.Repa.Repr.Vector as Repa
 
 import qualified Data.Array.Linear as A
 import           Data.Array.Linear (Transformed(..))
@@ -60,14 +49,11 @@ import Graphics.Rendering.GLSL.SDF
 
 import qualified Graphics.Display.Object as O
 
+import Graphics.Rendering.WebGL (compileShader)
 
+import Graphics.Rendering.GLSL.SDF.Utils (shader_header, sdf_utils)
 
-
-
-
-
-
-
+import           GHCJS.Types         (JSRef)
 
 
 
@@ -88,11 +74,38 @@ instance Monoid StdUniforms where
 
 -- === GLSLState ===
 
-data GLSLState = GLSLState { _stdUniforms :: StdUniforms
-                           , _names       :: [String] 
+data Uniform t = Uniform String t deriving (Show, Functor, Traversable, Foldable)
+
+newtype Uniform2 t = Uniform2 (UniformType t)
+
+data UniformDecl = UniformDecl String ExternalDeclaration deriving (Show)
+
+type family UniformType uni
+
+
+class    IsUniform a     where toDecl :: Uniform a -> ExternalDeclaration
+instance IsUniform Float where toDecl (Uniform n a) = uniformDecl2 n
+
+class    IsUniformID t => IsUniform2 t where toDecl2 :: Uniform2 t -> ExternalDeclaration
+instance IsUniformID t => IsUniform2 t where toDecl2 (Uniform2 a) = uniformDecl2 (reprID (Proxy :: Proxy t))
+
+
+class IsUniformID t where reprID :: Proxy t -> String
+
+
+--uniformDecl2 :: String -> Expr -> ExternalDeclaration
+--uniformDecl2 name e = Declaration 
+--                    $ InitDeclaration (TypeDeclarator (FullType (Just (TypeQualSto Uniform)) (TypeSpec Nothing (TypeSpecNoPrecision Float Nothing)))) 
+--                      [ InitDecl name Nothing $ Just e ]
+
+-- === GLSLState ===
+
+data GLSLState = GLSLState { _glslAST     :: TranslationUnit
+                           , _stdUniforms :: StdUniforms
+                           , _uniforms    :: [UniformDecl]
+                           , _freeNames   :: [String] 
                            } deriving (Show)
 makeLenses ''GLSLState
-
 
 -- Instances
 
@@ -104,17 +117,31 @@ instance MonadGLSL (State GLSLState) where
     getState = get
     putState = put
 
-
 instance Monoid GLSLState where
-    mempty = GLSLState mempty ((\s -> ("_" <> s <> "_")) .: flip (:) <$> ("" : fmap show [0..]) <*> ['a' .. 'z'])
+    mempty = GLSLState (TranslationUnit []) mempty mempty ((\s -> ("_" <> s <> "_")) .: flip (:) <$> ("" : fmap show [0..]) <*> ['a' .. 'z'])
+
+
+
+-- === GLSL Program ===
+
+--newtype ProgramDesc   unis = ProgramDesc TranslationUnit deriving (Show)
+data   Program t unis = Program t unis
+type JSProgram        = Program JSRef
+
+
+-- === GLSL Builder ===
+
+class GLSLBuilder t m unis | t -> unis where
+    toGLSL :: t -> m unis
+
 
 -- Utils
 
 genName' :: MonadGLSL m => m String
 genName' = do
     s <- getState
-    let (n:ns) = view names s
-    putState (s & names .~ ns)
+    let (n:ns) = view freeNames s
+    putState (s & freeNames .~ ns)
     return n
 
 genName :: MonadGLSL m => m Expr
@@ -126,73 +153,59 @@ newName' pfx = (pfx <>) <$> genName'
 newName :: MonadGLSL m => String -> m Expr
 newName pfx = fromString <$> newName' pfx
 
+withState f = do
+    s <- getState
+    putState $ f s
+
 getStdUniforms = view stdUniforms <$> getState
 
 getPosition = view position <$> getStdUniforms 
 getColor    = view colorx   <$> getStdUniforms 
 
+newUniform pfx a = do 
+    --name <- (pfx <>) <$> genName'
+    name <- return pfx
+
+    let uni = Uniform name a
+    withState $ uniforms %~ (UniformDecl name (toDecl uni) :)
+    return uni
+
+newUniform2 :: (MonadGLSL m, IsUniform2 t) => t -> (UniformType t) -> m (Uniform2 t)
+newUniform2 t a = do 
+    --name <- (pfx <>) <$> genName'
+    --name <- return (show t)
+
+    let uni = Uniform2 a
+    withState $ uniforms %~ (UniformDecl "dupa" (toDecl2 uni) :)
+    return uni
+
+compileMaterial :: (MonadIO m, GLSLBuilder t (State GLSLState) u) => t -> m (JSProgram u)
+compileMaterial obj = do
+    let (glsl, u) = runBuilder $ toGLSL obj
+    putStrLn "GENERATED:"
+    putStrLn glsl
+    flip Program u <$> compileShader glsl
+
+
+setTUnit a = withState $ glslAST .~ a
+
+-- === SDF Building ===
 
 
 
+data AA = AA deriving (Show)
+type instance UniformType AA = Float
 
-
--- === Material.Layer.Flat ===
-
-type F_Radius = Float
-
-
+instance IsUniformID AA where reprID _ = "aa"
 
 
 
-
-
-
-
---object :: (Num a, Monad t) => t a -> BoolObject t a
---object = Object . Shaded def . Transformed mempty . lift
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
----------------------
-
-
-instance (Convertible a Expr, n ~ 2) => Convertible (Dim 2 Ball a) (SDF n Expr) where
-    convert (Dim (Ball r)) = SDF $ \v -> "sdf_ball" [convert v, convert r]
-
-
----------------------
-
-
-
-
----------------------
-
-class GLSLBuilder t m where
-    buildGLSL :: t -> m [Statement]
-
-
---instance Convertible (Color RGBA Float) Expr where
---    convert c = "vec4" [ cxonvert $ c ^. x, convert $ c ^. y, convert $ c ^. z, convert $ c ^. w ]  
 
 instance Convertible a Expr => Convertible (Color RGBA a) Expr where
     convert (view wrapped -> c) = "vec4" [ convert $ c ^. A.x, convert $ c ^. A.y, convert $ c ^. A.z, convert $ c ^. A.w ]  
 
-
-
-instance MonadGLSL m => GLSLBuilder (Object 2) m where
-    buildGLSL (Object (O.Object (Shaded (Material layers) (Transformed xform (Bool.Compound (Bool.Val obj)))))) = do
+instance MonadGLSL m => GLSLBuilder (Object 2) m (Uniform2 AA) where
+    toGLSL (Object (O.Object (Shaded (Material layers) (Transformed xform (Bool.Compound (Bool.Val obj)))))) = do
 
         let sdf = convert obj :: SDF 2 Expr
         
@@ -201,6 +214,9 @@ instance MonadGLSL m => GLSLBuilder (Object 2) m where
         
         color  <- getColor
         gstart <- newName "sdf"
+
+        --aa <- newUniform "aa" (0.0 :: Float)
+        aa <- newUniform2 AA (0.0 :: Float)
 
 
         let drawPattern = \case 
@@ -257,94 +273,31 @@ instance MonadGLSL m => GLSLBuilder (Object 2) m where
                    ]
 
 
-        (rest <>) . snd <$> drawLayers gstart layers
+        gExpr <- (rest <>) . snd <$> drawLayers gstart layers
+        let u = unit [   func' "main" [ param void ] $ [ val vec3 "local"  $ "world" - "origin" 
+                                                       , val vec3 "ulocal" $ "local" * "dpr"
+                                                       , val vec2 "p"      $ ("ulocal" .> "xy")
+                                                       ] <> gExpr
+                     ]
+        setTUnit u
+        return (aa)
 
 
 
-shapeToGLSL s = prettyShow s1 where
+runBuilder a = (shader_header <> ufsGLSL <> sdf_utils <> prettyShow glsl, u) where
+    (u, s)    = runState a (mempty :: GLSLState)
+    glsl      = s ^. glslAST
+    ufs       = s ^. uniforms
+    ufsDecls  = fmap getExt ufs
+    ufsGLSL   = prettyShow $ unit ufsDecls
 
-    gExpr = flip evalState (mempty :: GLSLState) $ buildGLSL s
+    getExt (UniformDecl _ ext) = ext
 
-    local  = "local"
-    dpr    = "dpr"
-    s1 = unit [   func' "main" [ param void ] $ [ val vec3 "local"  $ "world" - "origin" 
-                                                , val vec3 "ulocal" $ "local" * "dpr"
-                                                , val vec2 "p"      $ ("ulocal" .> "xy")
-                                                , val vec2 "c"      $ ("dim" .> "xy") / 2.0
-                                                , val vec2 "z"      $ "p" / ("dim" .> "xy")
-                                                
-                                                ] <> gExpr 
-              ]
+--prettyShowUnit (TranslationUnit u) = prettyShow u
 
 
+-- Instances
 
+instance GLSLBuilder t m u => GLSLBuilder (Bounded b t) m u where
+    toGLSL (Bounded _ a) = toGLSL a
 
-
---instance Unbox Expr
-
---instance 
-
---type family CoordsBase space :: * -> *
---type family MetricOf a :: *
---type        Space_CoordsBase t = CoordsOf (SpaceOf t)
---type        Space_Coords t = Space_CoordsBase t (SpaceUnits t)
-
-
---type family Units a
---type        SpaceUnits t = Units (SpaceOf t)
-
---class HasPosition t where
---    position :: Lens' (t u) (Space_CoordsBase t u)
-
---type family SpaceData d (t :: * -> *)
-
-
-
---type family Provider m (lst :: [*]) :: Constraint where Provider m '[]       = ()
---                                                        Provider m (l ': ls) = (Provides l m, Provider m ls)
-
---class ProvidesPosition m where
---    getPosition :: m Expr
---    setPosition :: m Expr
-
-
-----class IsSDF (dim :: Nat) s a where
-----    sdf :: s a -> SDF dim 0
-
---class IsSDFM (dim :: Nat) s m a where
---    sdfM :: s a -> m (SDF dim a)
-
-
---instance (Provider m '[Position], Functor m, Convertible a Expr) => IsSDFM 2 Ball m a where
---    sdfM (Ball r) = SDF2 . (\p -> "sdf_circle" [p, convert r]) <$> get Position 
-
-
---ball :: Expr -> SDF
-
---class Merge dim a where merge :: SDF dim a 
-
---s1 = Shape [circle 12]
-
-
---class Foo b s a m where
---    foo :: LensLike ((,) b) s s a b -> (a -> b) -> m b
-
---class Foo a b c d e f m g where
---    foo :: LensLike a b c d e -> f -> m g
-
-
-
-class Foo a b c d where
-    foo :: Lens a b c d
-
---bar :: (Functor f, Foo a b c d) => (c -> f d) -> a -> f b
---bar :: _ => _
---bar = flip State.runState (0 :: Int) $ do
---    x <- view foo
---    y <- view foo
---    c <- set foo y
---    return (x,y)
-
-
---bar :: _ => _
---bar a b = a .~ b 

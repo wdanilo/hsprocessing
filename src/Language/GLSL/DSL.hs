@@ -108,9 +108,15 @@ instance Convertible Float Expr where
 
 instance t ~ Expr => IsString ([t] -> Expr) where fromString = app 
 
+uniformDecl :: String -> ExternalDeclaration
+uniformDecl name = Declaration 
+                 $ InitDeclaration (TypeDeclarator (FullType (Just (TypeQualSto Uniform)) (TypeSpec Nothing (TypeSpecNoPrecision Float Nothing)))) 
+                   [ InitDecl name Nothing $ Just (FloatConstant 1.0) ]
 
-
-
+uniformDecl2 :: String -> ExternalDeclaration
+uniformDecl2 name = Declaration 
+                  $ InitDeclaration (TypeDeclarator (FullType (Just (TypeQualSto Uniform)) (TypeSpec Nothing (TypeSpecNoPrecision Float Nothing)))) 
+                    [ InitDecl name Nothing Nothing ]
 
 --data Geometry pos  = Geometry pos 
 

@@ -6,7 +6,6 @@ module Math.Topology.Geometry.Figures where
 import Prologue
 import Math.Space.Dimension (Dim, embed')
 
-
 newtype Ball a = Ball a deriving (Show, Functor, Foldable, Traversable)
 
 type Circle a = Dim 2 Ball a

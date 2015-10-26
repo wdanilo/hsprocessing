@@ -2,7 +2,7 @@ module Graphics.Shading.Material where
 
 import Prologue                  hiding (Bounded)
 
-import Math.Space.Metric.Bounded (Bounded)
+import Math.Space.Metric.Bounded (Bounded, bounded)
 import Math.Space.Dimension      (DimOf)
 
 
@@ -27,4 +27,6 @@ instance      HasMaterial (Shaded l t a) where
 
 ---------
 
-type instance MaterialOf (Bounded b t) = MaterialOf t
+type instance             MaterialOf  (Bounded b t) = MaterialOf t
+instance HasMaterial t => HasMaterial (Bounded b t) where 
+    material = bounded . material

@@ -9,27 +9,29 @@ build-type:          Simple
 cabal-version:       >=1.22
 
 executable nodelab
-  main-is:             Main.hs
-  default-extensions:   DoAndIfThenElse
-                      , TemplateHaskell
-                      , DeriveGeneric
-                      , StandaloneDeriving
-                      , FlexibleContexts
-                      , MultiParamTypeClasses
-                      , DefaultSignatures
-                      , DeriveFunctor
-                      , DeriveTraversable
-                      , DeriveFoldable
-                      , FlexibleInstances
-                      , LambdaCase
-                      , ConstraintKinds
-                      , GeneralizedNewtypeDeriving
-                      , DeriveDataTypeable
-                      , ScopedTypeVariables
-                      , NoImplicitPrelude
-                      , KindSignatures
-                      , DataKinds
-                      , TypeFamilies
+  main-is:            Main.hs
+  default-extensions: NoImplicitPrelude
+                      DoAndIfThenElse
+                      TemplateHaskell
+                      DeriveGeneric
+                      StandaloneDeriving
+                      FlexibleContexts
+                      MultiParamTypeClasses
+                      DefaultSignatures
+                      DeriveFunctor
+                      DeriveTraversable
+                      DeriveFoldable
+                      FlexibleInstances
+                      LambdaCase
+                      ConstraintKinds
+                      GeneralizedNewtypeDeriving
+                      DeriveDataTypeable
+                      ScopedTypeVariables
+                      KindSignatures
+                      DataKinds
+                      TypeFamilies
+                      QuasiQuotes
+                      TupleSections
 
   other-modules:     Data.Array.Linear
                      Data.Array.Linear.Color
@@ -41,6 +43,7 @@ executable nodelab
                      Data.Array.Linear.Properties
                      Graphics.Display.Object
                      Graphics.Rendering.GLSL.SDF
+                     Graphics.Rendering.GLSL.SDF.Utils
                      Graphics.Shading.Flat
                      Graphics.Shading.Material
                      Graphics.Shading.Pattern

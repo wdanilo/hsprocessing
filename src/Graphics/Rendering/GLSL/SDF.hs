@@ -34,7 +34,7 @@ instance HasMaterial (Object dim) where material = wrapped . material
 
 -- utils
 
-object :: SDF 2 Expr -> Object 2
+object :: SDF n Expr -> Object n
 object = Object . Display.Object . Shaded def . Transformed mempty . Compound . Bool.Val
 
 
