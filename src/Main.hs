@@ -79,14 +79,35 @@ import Control.Concurrent (threadDelay)
 ---------------------
 
 data BSize = BSize deriving (Show)
-type instance UniformType BSize = Float
-instance IsUniformID BSize where reprID _ = "bsize"
+type instance GLSL.UniformType BSize = Float
+instance GLSL.IsUniformID BSize where reprID _ = "bsize"
+
+data BRad = BRad deriving (Show)
+type instance GLSL.UniformType BRad = Float
+instance GLSL.IsUniformID BRad where reprID _ = "brad"
+
+
+--myBall2 = do
+--    bsize <- GLSL.newUniform2 BSize 10.0
+--    brad  <- GLSL.newUniform2 BRad  10.0
 
 
 mtl      = Material $ [ Fill            . Solid $ color4 0.7 0.2 0.2 1.0 
                       , Border 10.0     . Solid $ color4 0.0 1.0 0.0 1.0
                       , Shadow 10.0 2.0 . Solid $ color4 0.0 0.0 0.0 0.2
                       ] :: Material (Layer GLSL.Expr)
+
+    
+
+--Material [AA, BSize] Expr
+
+--mtl2 = do
+--    bsize <- GLSL.newUniform2 BSize (10.0 :: Float)
+--    let mtl = Material $ [ Fill                   . Solid $ color4 0.7 0.2 0.2 1.0 
+--                         , Border (convert bsize) . Solid $ color4 0.0 1.0 0.0 1.0
+--                         , Shadow 10.0 2.0        . Solid $ color4 0.0 0.0 0.0 0.2
+--                         ] :: Material (Layer GLSL.Expr)
+--    return mtl
 
 myBall :: Bounded Float (Object 2)
 myBall = Bounded (A.vec2 400 400) (ball 100.0)

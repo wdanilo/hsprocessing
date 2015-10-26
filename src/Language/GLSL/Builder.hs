@@ -93,6 +93,9 @@ instance IsUniformID t => IsUniform2 t where toDecl2 (Uniform2 a) = uniformDecl2
 class IsUniformID t where reprID :: Proxy t -> String
 
 
+instance Convertible (UniformType t) Expr
+      => Convertible (Uniform2    t) Expr where convert (Uniform2 a) = convert a
+
 --uniformDecl2 :: String -> Expr -> ExternalDeclaration
 --uniformDecl2 name e = Declaration 
 --                    $ InitDeclaration (TypeDeclarator (FullType (Just (TypeQualSto Uniform)) (TypeSpec Nothing (TypeSpecNoPrecision Float Nothing)))) 
