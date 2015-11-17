@@ -41,7 +41,7 @@ import Data.Fixed (mod')
 
 import Control.Monad.State
 
-import Math.Topology.Geometry.Figures (Ball(..), Rect(..))
+import Math.Topology.Geometry.Figures (Ball(..), Rectangle(..))
 import Math.Space.Metric.Bounded
 import Math.Space.Dimension (Dim)
 import Math.Space.Metric.SDF
@@ -92,18 +92,18 @@ instance GLSL.IsUniformID BRad where reprID _ = "brad"
 --    brad  <- GLSL.newUniform2 BRad  10.0
 
 
-mtl      = Material $ [ Fill            . Solid $ color4 0.7 0.2 0.2 1.0 
+mtl      = Material $ [ Fill            . Solid $ color4 0.7 0.2 0.2 1.0
                       , Border 10.0     . Solid $ color4 0.0 1.0 0.0 1.0
                       , Shadow 10.0 2.0 . Solid $ color4 0.0 0.0 0.0 0.2
                       ] :: Material (Layer GLSL.Expr)
 
-    
+
 
 --Material [AA, BSize] Expr
 
 --mtl2 = do
 --    bsize <- GLSL.newUniform2 BSize (10.0 :: Float)
---    let mtl = Material $ [ Fill                   . Solid $ color4 0.7 0.2 0.2 1.0 
+--    let mtl = Material $ [ Fill                   . Solid $ color4 0.7 0.2 0.2 1.0
 --                         , Border (convert bsize) . Solid $ color4 0.0 1.0 0.0 1.0
 --                         , Shadow 10.0 2.0        . Solid $ color4 0.0 0.0 0.0 0.2
 --                         ] :: Material (Layer GLSL.Expr)
@@ -113,10 +113,19 @@ myBall :: Bounded Float (Object 2)
 myBall = Bounded (A.vec2 400 400) (ball 100.0)
        & material .~ mtl
 
+myRect :: Bounded Float (Object 2)
+myRect = Bounded (A.vec2 400 400) (hyperrectangle $ A.vec2 100.0 20.0)
+       & material .~ mtl
+
 
 main = do
-    let obj = myBall
-        [gw', gh'] = toList $ obj ^. bounds
+    let objBall = myBall
+        [gw', gh'] = toList $ objBall ^. bounds
+        gw = gw'/2;
+        gh = gh'/2;
+
+    let objRect = myRect
+        [gw', gh'] = toList $ objRect ^. bounds
         gw = gw'/2;
         gh = gh'/2;
 
@@ -127,7 +136,7 @@ main = do
         runjs $ do
             ctx     <- initCanvas
 
-            GLSL.Program jsProg aa <- GLSL.compileMaterial obj
+            GLSL.Program jsProg aa <- GLSL.compileMaterial objRect
 
             buffers <- makeRectGeo ctx gw gh
 
@@ -154,7 +163,7 @@ main = do
 --kazdy uniform ma osobny typ wtedy
 
 
-            
+
 
 fromRight = \case
     Right r -> r

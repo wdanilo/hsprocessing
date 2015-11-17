@@ -24,57 +24,53 @@ sdf_utils = [s|
     // Combine distance field functions //
     //////////////////////////////////////
 
-    float length      (float a, float b) { return sqrt(a*a + b*b); }
+    float length      (float a, float b) { return sqrt(a * a + b * b); }
     float clamp       (float a)          { return clamp (a,0.0,1.0); }
     float invert      (float a)          { return 1.0 - a; }
-    float mulInverted (float a, float b) { return invert (invert (a) * invert (b)); }
+    float mulInverted (float a, float b) { return invert(invert (a) * invert (b)); }
 
     float sdf_smoothMerge(float d1, float d2, float k) {
-        float dk1 = d1/k;
-        float dk2 = d2/k;
-        float x = mulInverted(clamp (dk1), clamp (dk2));
+        float dk1 = d1 / k;
+        float dk2 = d2 / k;
+        float x = mulInverted(clamp(dk1), clamp(dk2));
         // float x = length(dk1, dk2);
-        float h = clamp(0.5 + 0.5*(dk2 - dk1));
+        float h = clamp(0.5 + 0.5 * (dk2 - dk1));
         float r = (d1 * h + d2 * invert(h)) - k * h * invert(h);
-        r = clamp(r,r/x,r);
+        r = clamp(r, r / x, r);
         return r;
     }
 
     float sdf_smoothMergeDisorted(float d1, float d2, float k) {
-        float h = clamp(0.5 + 0.5*(d2 - d1)/k, 0.0, 1.0);
-        return mix(d2, d1, h) - k * h * (1.0-h);
+        float h = clamp(0.5 + 0.5 * (d2 - d1) / k, 0.0, 1.0);
+        return mix(d2, d1, h) - k * h * (1.0 - h);
     }
 
-
-    float merge     (float d1, float d2) { return min( d1, d2); }
-    float sdf_subtract  (float d1, float d2) { return max(-d1, d2); }
-    float sdf_intersect (float d1, float d2) { return max( d1, d2); }
-    float sdf_grow      (float size, float d) { return d - size; }
-    float sdf_shrink    (float size, float d) { return sdf_grow(-size,d); }
-
+    float sdf_merge     (float d1,   float d2) { return min( d1, d2); }
+    float sdf_subtract  (float d1,   float d2) { return max(-d1, d2); }
+    float sdf_intersect (float d1,   float d2) { return max( d1, d2); }
+    float sdf_grow      (float size, float d)  { return d - size; }
+    float sdf_shrink    (float size, float d)  { return d + size; }
 
     //////////////////////////////
     // Distance field functions //
     //////////////////////////////
 
-
     float sdf_pie(vec2 p, float angle) {
         angle = radians(angle) / 2.0;
         vec2 n = vec2(cos(angle), sin(angle));
-        return abs(p).x * n.x + p.y*n.y;
+        return abs(p).x * n.x + p.y * n.y;
     }
-
 
     float sdf_ball(vec2 p, float radius) {
         return length(p) - radius;
     }
 
     float sdf_ball(vec2 p, float radius, float angle) {
-        return sdf_subtract(sdf_pie(p, angle), sdf_ball(p,radius));
+        return sdf_subtract(sdf_pie(p, angle), sdf_ball(p, radius));
     }
 
     float sdf_sphere(vec2 p, float radius) {
-        return abs(sdf_ball(p,radius));
+        return abs(sdf_ball(p, radius));
     }
 
     float sdf_ellipse(vec2 p, float a, float b) {
@@ -82,20 +78,17 @@ sdf_utils = [s|
         float b2  = b * b;
         float px2 = p.x * p.x;
         float py2 = p.y * p.y;
-        return (b2 * px2 + a2 * py2 - a2 * b2)/(a2 * b2);
+        return (b2 * px2 + a2 * py2 - a2 * b2) / (a2 * b2);
     }
 
-
     float sdf_triangle(vec2 p, float radius) {
-        return max( abs(p).x * 0.866025 + 
-                    p.y * 0.5, -p.y) 
-                    -radius * 0.5;
+        return max(abs(p).x * 0.866025 + p.y * 0.5, -p.y) - radius * 0.5;
     }
 
 
     float sdf_triangle(vec2 p, float width, float height) {
         vec2 n = normalize(vec2(height, width / 2.0));
-        return max( abs(p).x*n.x + p.y*n.y - (height*n.y), -p.y);
+        return max(abs(p).x * n.x + p.y * n.y - (height * n.y), -p.y);
     }
 
     float sdf_ring(vec2 p, float radius, float width) {
@@ -139,70 +132,59 @@ sdf_utils = [s|
         }
     }
 
-
     float sdf_line(vec2 p, vec2 start, vec2 end, float width) {
         vec2 dir = start - end;
         float lngth = length(dir);
         dir /= lngth;
         vec2 proj = max(0.0, min(lngth, dot((start - p), dir))) * dir;
-        return length( (start - p) - proj ) - (width / 2.0);
+        return length( (start - p) - proj) - (width / 2.0);
     }
-
 
     ///////////////////////
     // Masks for drawing //
     ///////////////////////
 
-
     float sdf_fill(float dist) {
         return clamp(-dist, 0.0, 1.0);
     }
 
-
     // float sdf_borderOut(float width, float p) {
     //     float alpha1 = clamp(p);
     //     float alpha2 = clamp(p - width);
-    //     return sdf_subtract (sdf_shrink(width,p),p);
+    //     return sdf_subtract(sdf_shrink(width,p),p);
     // }
 
     float sdf_borderOut(float width, float p) {
-        return sdf_subtract (p + 0.5,sdf_grow(width,p));
+        return sdf_subtract(p + 0.5,sdf_grow(width,p));
     }
 
     float sdf_borderIn(float width, float p) {
         float alpha1 = clamp(p);
         float alpha2 = clamp(p - width);
-        return sdf_subtract (p,sdf_grow(width,p));
+        return sdf_subtract(p,sdf_grow(width,p));
     }
 
     float sdf_shadow(float p, float width, float exp) {
         return pow(1.0-clamp(p/width),exp);
     }
 
-    
-
-
     /////////////////////
     // Transformations //
     /////////////////////
 
-
     vec2 sdf_rotateCCW(vec2 p, float a) {
         mat2 m = mat2(cos(a), sin(a), -sin(a), cos(a));
-        return p * m;   
+        return p * m;
     }
-
 
     vec2 sdf_rotateCW(vec2 p, float a) {
         mat2 m = mat2(cos(a), -sin(a), sin(a), cos(a));
         return p * m;
     }
 
-
     vec2 translate(vec2 p, vec2 t) {
         return p - t;
     }
-
 
     // ---------------------------
 
@@ -211,8 +193,6 @@ sdf_utils = [s|
         vec3 p = abs(fract(c.xxx + K.xyz) * 6.0 - K.www);
         return c.z * mix(K.xxx, clamp(p - K.xxx, 0.0, 1.0), c.y);
     }
-
-
 
     float sdf_aa(float d) {
         float anti = fwidth(d) * aa;
@@ -224,7 +204,7 @@ sdf_utils = [s|
     }
 
     vec3 gradient_hsv (vec2 p, float step) {
-        return hsv2rgb(vec3(p.x/step,1.0,1.0)); 
+        return hsv2rgb(vec3(p.x/step,1.0,1.0));
     }
 
 
@@ -233,7 +213,7 @@ sdf_utils = [s|
     }
 
     float bismooth (float a, float exp) {
-        if (a > 0.5) { return 1.0 - pow((1.0 - a) * 2.0, exp)/2.0; } 
+        if (a > 0.5) { return 1.0 - pow((1.0 - a) * 2.0, exp)/2.0; }
         else         { return pow(a * 2.0, exp)/2.0;               }
     }
 

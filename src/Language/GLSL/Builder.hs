@@ -60,7 +60,7 @@ import           GHCJS.Types         (JSRef)
 -- === StdUniforms ===
 
 
-data StdUniforms = StdUniforms { _position :: A.BVec 2 Expr 
+data StdUniforms = StdUniforms { _position :: A.BVec 2 Expr
                                , _colorx   :: Expr
                                } deriving (Show)
 makeLenses ''StdUniforms
@@ -97,8 +97,8 @@ instance Convertible (UniformType t) Expr
       => Convertible (Uniform2    t) Expr where convert (Uniform2 a) = convert a
 
 --uniformDecl2 :: String -> Expr -> ExternalDeclaration
---uniformDecl2 name e = Declaration 
---                    $ InitDeclaration (TypeDeclarator (FullType (Just (TypeQualSto Uniform)) (TypeSpec Nothing (TypeSpecNoPrecision Float Nothing)))) 
+--uniformDecl2 name e = Declaration
+--                    $ InitDeclaration (TypeDeclarator (FullType (Just (TypeQualSto Uniform)) (TypeSpec Nothing (TypeSpecNoPrecision Float Nothing))))
 --                      [ InitDecl name Nothing $ Just e ]
 
 -- === GLSLState ===
@@ -106,7 +106,7 @@ instance Convertible (UniformType t) Expr
 data GLSLState = GLSLState { _glslAST     :: TranslationUnit
                            , _stdUniforms :: StdUniforms
                            , _uniforms    :: [UniformDecl]
-                           , _freeNames   :: [String] 
+                           , _freeNames   :: [String]
                            } deriving (Show)
 makeLenses ''GLSLState
 
@@ -162,10 +162,10 @@ withState f = do
 
 getStdUniforms = view stdUniforms <$> getState
 
-getPosition = view position <$> getStdUniforms 
-getColor    = view colorx   <$> getStdUniforms 
+getPosition = view position <$> getStdUniforms
+getColor    = view colorx   <$> getStdUniforms
 
-newUniform pfx a = do 
+newUniform pfx a = do
     --name <- (pfx <>) <$> genName'
     name <- return pfx
 
@@ -174,7 +174,7 @@ newUniform pfx a = do
     return uni
 
 newUniform2 :: (MonadGLSL m, IsUniform2 t) => t -> (UniformType t) -> m (Uniform2 t)
-newUniform2 t a = do 
+newUniform2 t a = do
     --name <- (pfx <>) <$> genName'
     --name <- return (show t)
 
@@ -205,16 +205,16 @@ instance IsUniformID AA where reprID _ = "aa"
 
 
 instance Convertible a Expr => Convertible (Color RGBA a) Expr where
-    convert (view wrapped -> c) = "vec4" [ convert $ c ^. A.x, convert $ c ^. A.y, convert $ c ^. A.z, convert $ c ^. A.w ]  
+    convert (view wrapped -> c) = "vec4" [ convert $ c ^. A.x, convert $ c ^. A.y, convert $ c ^. A.z, convert $ c ^. A.w ]
 
 instance MonadGLSL m => GLSLBuilder (Object 2) m (Uniform2 AA) where
     toGLSL (Object (O.Object (Shaded (Material layers) (Transformed xform (Bool.Compound (Bool.Val obj)))))) = do
 
         let sdf = convert obj :: SDF 2 Expr
-        
+
         p      <- getPosition
-        
-        
+
+
         color  <- getColor
         gstart <- newName "sdf"
 
@@ -222,7 +222,7 @@ instance MonadGLSL m => GLSLBuilder (Object 2) m (Uniform2 AA) where
         aa <- newUniform2 AA (0.0 :: Float)
 
 
-        let drawPattern = \case 
+        let drawPattern = \case
                 Solid c -> do
                     fill <- newName "fill"
                     return (fill, [ val vec4 fill $ convert c ])
@@ -232,7 +232,7 @@ instance MonadGLSL m => GLSLBuilder (Object 2) m (Uniform2 AA) where
                     let gtrans g = return (g,[])
                         gdraw g = do
                             (fill, glsl) <- drawPattern pattern
-                            return $ glsl 
+                            return $ glsl
                                   <> [ color .= "vec4" ["mix" [color .> "rgb", fill .> "rgb", "sdf_aa"[g] * (fill .> "a") ], 1.0]
                                      ]
                     return (gtrans, gdraw)
@@ -244,7 +244,7 @@ instance MonadGLSL m => GLSLBuilder (Object 2) m (Uniform2 AA) where
                         gdraw s = do
                             (fill, glsl) <- drawPattern pattern
                             ng     <- newName "sdf"
-                            return $ glsl 
+                            return $ glsl
                                   <> [ val float ng      $ "sdf_borderOut" [convert rad, s]
                                      , color .= "vec4" ["mix" [color .> "rgb", fill .> "rgb", "sdf_aa"[ng] * (fill .> "a") ], 1.0]
                                      ]
@@ -255,9 +255,9 @@ instance MonadGLSL m => GLSLBuilder (Object 2) m (Uniform2 AA) where
                     let gtrans g = return (g,[])
                         gdraw g = do
                                 (fill, glsl) <- drawPattern pattern
-                                return $ glsl 
+                                return $ glsl
                                       <> [ val float shadow $ "sdf_shadow" [g, convert rad, convert exp]
-                                         , color .= "vec4" ["mix" [color .> "rgb", fill .> "rgb", shadow], 1.0] 
+                                         , color .= "vec4" ["mix" [color .> "rgb", fill .> "rgb", shadow], 1.0]
                                          ]
                     return (gtrans, gdraw)
 
@@ -267,7 +267,7 @@ instance MonadGLSL m => GLSLBuilder (Object 2) m (Uniform2 AA) where
                 (gtrans , gdraw)  <- processLayer l
                 (g',  glslGTrans) <- gtrans g
                 (g'', glslBgrnd ) <- drawLayers g' ls
-                glslLayer         <- gdraw g 
+                glslLayer         <- gdraw g
                 return (g'', glslGTrans <> glslBgrnd <> glslLayer)
 
         let rest = [ val float gstart $ runSDF sdf p
@@ -277,7 +277,7 @@ instance MonadGLSL m => GLSLBuilder (Object 2) m (Uniform2 AA) where
 
 
         gExpr <- (rest <>) . snd <$> drawLayers gstart layers
-        let u = unit [   func' "main" [ param void ] $ [ val vec3 "local"  $ "world" - "origin" 
+        let u = unit [   func' "main" [ param void ] $ [ val vec3 "local"  $ "world" - "origin"
                                                        , val vec3 "ulocal" $ "local" * "dpr"
                                                        , val vec2 "p"      $ ("ulocal" .> "xy")
                                                        ] <> gExpr

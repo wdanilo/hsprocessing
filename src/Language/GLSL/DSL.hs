@@ -80,10 +80,10 @@ a .> fields = FieldSelection a fields
 assignment a b = ExpressionStatement (Just (Equal a b))
 
 (.=) = assignment
- 
+
 
 --class Assi
---val 
+--val
 
 instance IsString Expr where fromString = var
 
@@ -101,26 +101,28 @@ instance Num Expr where
 instance Convertible Float Expr where
     convert = FloatConstant
 
+-- instance Convertible (Vector n t a) Expr where
+
 --instance IsString TypeSpecifier where
     --fromString (s:ss) = typeSpec $ Char.toUpper s : ss
     --(+), (*), abs, signum, fromInteger, (negate | (-))
 
 
-instance t ~ Expr => IsString ([t] -> Expr) where fromString = app 
+instance t ~ Expr => IsString ([t] -> Expr) where fromString = app
 
 uniformDecl :: String -> ExternalDeclaration
-uniformDecl name = Declaration 
-                 $ InitDeclaration (TypeDeclarator (FullType (Just (TypeQualSto Uniform)) (TypeSpec Nothing (TypeSpecNoPrecision Float Nothing)))) 
+uniformDecl name = Declaration
+                 $ InitDeclaration (TypeDeclarator (FullType (Just (TypeQualSto Uniform)) (TypeSpec Nothing (TypeSpecNoPrecision Float Nothing))))
                    [ InitDecl name Nothing $ Just (FloatConstant 1.0) ]
 
 uniformDecl2 :: String -> ExternalDeclaration
-uniformDecl2 name = Declaration 
-                  $ InitDeclaration (TypeDeclarator (FullType (Just (TypeQualSto Uniform)) (TypeSpec Nothing (TypeSpecNoPrecision Float Nothing)))) 
+uniformDecl2 name = Declaration
+                  $ InitDeclaration (TypeDeclarator (FullType (Just (TypeQualSto Uniform)) (TypeSpec Nothing (TypeSpecNoPrecision Float Nothing))))
                     [ InitDecl name Nothing Nothing ]
 
---data Geometry pos  = Geometry pos 
+--data Geometry pos  = Geometry pos
 
---data Shape = Shape 
+--data Shape = Shape
 
 
 --data family V (dim :: Nat) a
@@ -148,13 +150,13 @@ uniformDecl2 name = Declaration
 
 --data family SDF (dim :: Nat) a
 
---data instance SDF 2 a = SDF2 (Expr -> Expr) 
+--data instance SDF 2 a = SDF2 (Expr -> Expr)
 --data instance SDF 2 a = SDF2 Expr deriving (Show)
 
 --data Colored a = Colored Color a
 --type SDF = Expr -> Expr
 
---class Bounded 
+--class Bounded
 
 --class IsSDF (dim :: Nat) s a where
 --    sdf :: (s a) -> SDF dim a
