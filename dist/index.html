@@ -75,10 +75,10 @@
     // Combine distance field functions //
     //////////////////////////////////////
 
-    float length      (float a, float b) { return sqrt(a*a + b*b); }
-    float clamp       (float a)          { return clamp (a,0.0,1.0); }
+    float length      (float a, float b) { return sqrt(a * a + b * b); }
+    float clamp       (float a)          { return clamp(a, 0.0, 1.0); }
     float invert      (float a)          { return 1.0 - a; }
-    float mulInverted (float a, float b) { return invert (invert (a) * invert (b)); }
+    float mulInverted (float a, float b) { return invert(invert (a) * invert (b)); }
 
     float sdf_smoothMerge(float d1, float d2, float k) {
         float dk1 = d1/k;
@@ -97,11 +97,11 @@
     }
 
 
-    float merge     (float d1, float d2) { return min( d1, d2); }
-    float sdf_subtract  (float d1, float d2) { return max(-d1, d2); }
-    float sdf_intersect (float d1, float d2) { return max( d1, d2); }
-    float sdf_grow      (float size, float d) { return d - size; }
-    float sdf_shrink    (float size, float d) { return sdf_grow(-size,d); }
+    float sdf_merge     (float d1,   float d2) { return min( d1, d2); }
+    float sdf_subtract  (float d1,   float d2) { return max(-d1, d2); }
+    float sdf_intersect (float d1,   float d2) { return max( d1, d2); }
+    float sdf_grow      (float size, float d)  { return d - size; }
+    float sdf_shrink    (float size, float d)  { return d + size; }
 
 
     //////////////////////////////
@@ -138,15 +138,12 @@
 
 
     float sdf_triangle(vec2 p, float radius) {
-        return max( abs(p).x * 0.866025 +
-                    p.y * 0.5, -p.y)
-                    -radius * 0.5;
+        return max(abs(p).x * 0.866025 + p.y * 0.5, -p.y) - radius * 0.5;
     }
-
 
     float sdf_triangle(vec2 p, float width, float height) {
         vec2 n = normalize(vec2(height, width / 2.0));
-        return max( abs(p).x*n.x + p.y*n.y - (height*n.y), -p.y);
+        return max(abs(p).x*n.x + p.y*n.y - (height*n.y), -p.y);
     }
 
     float sdf_ring(vec2 p, float radius, float width) {
@@ -231,19 +228,19 @@
     }
 
 
-    float sdf_rightHalfplane(vec2 p) {
+    float sdf_halfplaneRight(vec2 p) {
         return p.x;
     }
 
-    float sdf_leftHalfplane(vec2 p) {
+    float sdf_halfplaneLeft(vec2 p) {
         return -p.x;
     }
 
-    float sdf_topHalfplane(vec2 p) {
+    float sdf_halfplaneTop(vec2 p) {
         return p.y;
     }
 
-    float sdf_bottomHalfplane(vec2 p) {
+    float sdf_halfplaneBottom(vec2 p) {
         return -p.y;
     }
 
@@ -694,9 +691,6 @@
                            );
 
         mat4 xform = xform1 * xform2;
-        // vec4 ulocal2 = vec4 (ulocal,1.0);
-        // ulocal2 = xform * ulocal2;
-        // ulocal = ulocal2.xyz;
 
         vec2 p = ulocal.xy;
         vec2 c = dim.xy / 2.0;
@@ -707,78 +701,142 @@
 
 
         float width = 200.0;
-        float value = 0.2;
+        float value = 0.02;
         float width1 = width * value;
         float width2 = width * (1.0 - value);
         float gRect      = sdf_rect(p, vec2(width, 20.0), vec4(10.0, 10.0, 10.0, 10.0));
-        float gRightHalfplane = sdf_rightHalfplane(translate(p, vec2(-width/2.0 + width1, 0)));
-        float gLeftHalfplane  = sdf_leftHalfplane(translate(p, vec2(-width/2.0 + width1, 0)));
+        float gRightHalfplane = sdf_halfplaneRight(translate(p, vec2(-width/2.0 + width1, 0)));
+        float gLeftHalfplane  = sdf_halfplaneLeft (translate(p, vec2(-width/2.0 + width1, 0)));
 
-        // float gRectAa      = sdf_aa(gRect);
-        // float gHalfplaneAa = sdf_aa(gHalfplane);
-
-        float gSliderRight = sdf_aa(-sdf_subtract(gRightHalfplane, gRect));
-        float gSliderLeft  = sdf_aa(-sdf_subtract(gLeftHalfplane,  gRect));
-
-        // float gSliderAa = sdf_intersect(gRectAa, gHalfplaneAa);
+        float gSliderLeft  = sdf_aa(sdf_subtract(gLeftHalfplane,  gRect));
+        float gSliderRight = sdf_aa(sdf_subtract(gRightHalfplane, gRect));
 
 
         vec3 bgCol = vec3(0.0, 0.3, 0.0);
 
-        vec3 color1 = vec3(0.6, 0.0, 0.6);
-        vec3 color2 = vec3(0.4, 0.4, 0.0);
-
-        // vec3 col1Aa = color1 * gAa1 + bgCol * (1.0 - gAa1);
-        // vec3 col2Aa = color1 * gAa2 + bgCol * (1.0 - gAa2);
-
-        // vec3 bc = smoothMerge(gRect1, gRect2, color1, color2, 0.1);
-        // float gD = sdf_smoothMergeDisorted(gRect1, gRect2, 0.1);
-
-        // vec4 l1 = vec4(color, sdf_aa(g));
-
-        // float g = gSlider;
-
-        // float gAa = sdf_aa(g);
-
-        // // gl_FragColor = vec4(bc, 1.0);
-        // // gl_FragColor = vec4(mix(bc, 1.0);
-
-        // vec3 colVal = color1;
-        // // if (p.x + width / 2.0 > width * value)
-        // //     colVal = color2;
-
-        // vec3 col = colVal * gAa + bgCol * (1.0 - gAa);
-
-        // gl_FragColor = vec4(col1Aa, 1.0);
-        // gl_FragColor = vec4(col2Aa, 1.0);
-        // float scG = g/1.0;
-        // vec3 bc1 = color1 * scG;
+        vec3 color1 = vec3(0.6, 0.6, 0.6);
+        vec3 color2 = vec3(0.4, 0.4, 0.4);
 
 
-        vec3 colorRight = color2 * gSliderRight;
         vec3 colorLeft  = color1 * gSliderLeft;
+        vec3 colorRight = color2 * gSliderRight;
 
-        // float gAa = max(gAa1, gAa2);
-        // vec3 bcA = bc * gAa + bgCol * (1.0 - gAa);
+        gl_FragColor = vec4(colorLeft, gSliderLeft);
+        gl_FragColor = vec4(mix(gl_FragColor.rgb, colorRight, gSliderRight), sdf_intersect(gSliderLeft, gSliderRight));
+    }
 
-        // gl_FragColor = vec4(bcA, max(gAa1, gAa2));
-        // gl_FragColor = vec4(0.3,0.3,0.3,0.0);
+    void testSlider4(void) {
+        vec3 local   = world - origin;
+        vec3 ulocal  = local * dpr;
 
-        gl_FragColor = vec4(colorRight, 1.0);
-        // gl_FragColor = vec4(colorLeft, 1.0);
-        // gl_FragColor = vec4(mix(gl_FragColor.rgb, colorLeft, 0.5), 1.0);
+        mat4 xform1 = mat4 ( 1.0, 0.0, 0.0, 0.0
+                           , 0.0, 0.8, 0.0, 0.0
+                           , 0.0, 0.0, 1.0, 0.0
+                           , 0.0, 0.0, 0.0, 1.0
+                           );
 
-        // gl_FragColor = vec4(mix(gl_FragColor.rgb, col2Aa, col1Aa), 1.0);
-        // gl_FragColor = vec4(mix(gl_FragColor.rgb, col2Aa, col1Aa), 1.0);
+        mat4 xform2 = mat4 ( 0.8, 0.0, 0.0, 0.0
+                           , 0.0, 1.0, 0.0, 0.0
+                           , 0.0, 0.0, 1.0, 0.0
+                           , 0.0, 0.0, 0.0, 1.0
+                           );
+
+        mat4 xform = xform1 * xform2;
+
+        vec2 p = ulocal.xy;
+        vec2 c = dim.xy / 2.0;
+        vec2 z = p / dim.xy;
+
+        p = appTrans2D(p, xform);
+
+        float width = 200.0;
+        float value = 0.2;
+        float width1 = width * value;
+        float width2 = width * (1.0 - value);
+        float gRect           = sdf_rect(p, vec2(width, 20.0), vec4(10.0, 10.0, 10.0, 10.0));
+        float gRightHalfplane = sdf_halfplaneRight(translate(p, vec2(-width/2.0 + width1, 0)));
+        float gLeftHalfplane  = sdf_halfplaneLeft (translate(p, vec2(-width/2.0 + width1, 0)));
+
+        float gBall = sdf_ball(p, 40.0);
+        float gTriangle = sdf_triangle(p, 70.0);
+        float gRe = sdf_rect(p, vec2(120.0, 30.0));
+        // float g = sdf_merge(gTriangle, gRe);
+        float g = gRe;
+
+        // float gSliderLeft  = sdf_aa((g / 1.0));
+        float gSliderLeft  = sdf_aa(sdf_subtract(gLeftHalfplane,  gRect));
+        float gSliderRight = sdf_aa(sdf_subtract(gRightHalfplane, gRect));
+
+
+        vec3 color1 = vec3(0.6, 0.6, 0.6);
+        vec3 color2 = vec3(0.4, 0.4, 0.4);
+
+        vec3 bgCol = vec3(0.0, 0.3, 0.0);
+
+
+        vec3 colorLeft  = color1 * gSliderLeft;
+        vec3 colorRight = color2 * gSliderRight;
+
+        gl_FragColor = vec4(0.0, 0.3, 0.0, 1.0);
+
+        gl_FragColor = vec4(mix(colorLeft, gl_FragColor.xyz, 1.0 - gSliderLeft), 1.0);
+        gl_FragColor = vec4(mix(colorRight, gl_FragColor.xyz, 1.0 - gSliderRight), 1.0);
 
     }
+
+    void testSlider5(void) {
+        vec3 local   = world - origin;
+        vec3 ulocal  = local * dpr;
+
+        mat4 xform1 = mat4 ( 1.0, 0.0, 0.0, 0.0
+                           , 0.0, 0.8, 0.0, 0.0
+                           , 0.0, 0.0, 1.0, 0.0
+                           , 0.0, 0.0, 0.0, 1.0
+                           );
+
+        mat4 xform2 = mat4 ( 0.8, 0.0, 0.0, 0.0
+                           , 0.0, 1.0, 0.0, 0.0
+                           , 0.0, 0.0, 1.0, 0.0
+                           , 0.0, 0.0, 0.0, 1.0
+                           );
+
+        mat4 xform = xform1 * xform2;
+
+        vec2 p = ulocal.xy;
+        vec2 c = dim.xy / 2.0;
+        vec2 z = p / dim.xy;
+
+        p = appTrans2D(p, xform);
+
+        float width = 200.0;
+        float value = 0.2;
+        float width1 = width * value;
+        float width2 = width * (1.0 - value);
+        float gRect           = sdf_rect(p, vec2(width, 20.0), vec4(10.0, 10.0, 10.0, 10.0));
+        float gRightHalfplane = sdf_halfplaneRight(translate(p, vec2(-width/2.0 + width1, 0)));
+        float gLeftHalfplane  = sdf_halfplaneLeft (translate(p, vec2(-width/2.0 + width1, 0)));
+
+        float gSliderLeft  = sdf_aa(sdf_subtract(gLeftHalfplane,  gRect));
+        float gSliderRight = sdf_aa(sdf_subtract(gRightHalfplane, gRect));
+
+        vec3 color1 = vec3(0.6, 0.6, 0.6);
+        vec3 color2 = vec3(0.4, 0.4, 0.4);
+
+        gl_FragColor = vec4(0.0, 0.3, 0.0, 1.0);
+
+        gl_FragColor = vec4(mix(color1, gl_FragColor.xyz, 1.0 - gSliderLeft),  1.0);
+        gl_FragColor = vec4(mix(color2, gl_FragColor.xyz, 1.0 - gSliderRight), 1.0);
+    }
+
     void main(void) {
         // test1();
         // test2();
         // test3();
         // testSlider1();
-        testSlider2();
+        // testSlider2();
         // testSlider3();
+        // testSlider4();
+        testSlider5();
     }
 </script>
 
