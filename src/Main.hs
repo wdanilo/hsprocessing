@@ -25,6 +25,7 @@ import Control.Lens
 import Control.Monad.IO.Class
 
 import qualified Language.GLSL as GLSL
+import qualified Language.GLSL.DSL as GLSLDSL
 import qualified Text.Parsec   as Parsec
 
 import Text.PrettyPrint.HughesPJClass (prettyShow, Pretty)
@@ -58,8 +59,6 @@ import Graphics.Rendering.WebGL
 
 
 import Control.Concurrent (threadDelay)
-
-
 
 
 
@@ -114,7 +113,7 @@ myBall = Bounded (A.vec2 400 400) (ball 100.0)
        & material .~ mtl
 
 myRect :: Bounded Float (Object 2)
-myRect = Bounded (A.vec2 400 400) (hyperrectangle $ A.vec2 100.0 20.0)
+myRect = Bounded (A.vec2 400 400) (hyperrectangle $ GLSLDSL.vec2expr 120.0 40.0)
        & material .~ mtl
 
 
@@ -176,6 +175,13 @@ fromRight = \case
 
 shader_t1 :: String
 shader_t1 = [s|uniform float aa = 1.0; |]
+
+shader_t2 :: String
+shader_t2 = [s|vec2 v = vec2(2.0, 3.0); |]
+
+shader_t3 :: String
+shader_t3 = [s|void main(void) { vec2 a = vec2(2.0, 3.0); } |]
+
 
 -- | To parse shader and see its representation use:
 -- | `putStrLn $ ppShow $ Parsec.runParser GLSL.translationUnit GLSL.S "shader parser" shader`

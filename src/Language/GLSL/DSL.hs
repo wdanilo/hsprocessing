@@ -103,6 +103,13 @@ instance Convertible Float Expr where
 
 -- instance Convertible (Vector n t a) Expr where
 
+vec2expr :: Float -> Float -> Expr
+vec2expr w h = FunctionCall
+                 (FuncIdTypeSpec
+                    (TypeSpec Nothing (TypeSpecNoPrecision Vec2 Nothing)))
+                 (Params [ FloatConstant w , FloatConstant h ])
+
+
 --instance IsString TypeSpecifier where
     --fromString (s:ss) = typeSpec $ Char.toUpper s : ss
     --(+), (*), abs, signum, fromInteger, (negate | (-))
