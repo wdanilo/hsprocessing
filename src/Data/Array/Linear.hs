@@ -160,7 +160,7 @@ deriving instance Traversable (Array '[w,h] t)   => Traversable (Matrix w h t)
 type instance ProductOf (Matrix w h t a) (Matrix w' h' t b) = Matrix w' h t (ProductOf a b)
 
 instance ( w ~ h', t ~ t', Mul a b, IsList (Matrix w h t a), IsList (Matrix w' h' t' b), IsList (Matrix w' h t c)
-         , ExtractRows '[w ,h ] t 
+         , ExtractRows '[w ,h ] t
          , ExtractCols '[w',h'] t'
          , Generated (Matrix w' h) t
          , UnsafeIndex (Array '[w']) t'
@@ -194,7 +194,7 @@ instance Wrapped   (Matrix w h t a) where
 
 instance (FromListUnsafe d, Monoid (Item d), KnownNats '[w,h], d ~ Unwrapped (Matrix w h t a))
       => Monoid (Matrix w h t a) where
-    mempty = Matrix mempty 
+    mempty = Matrix mempty
     mappend (Matrix m1) (Matrix m2) = Matrix $ m1 <> m2
 
 instance FromListUnsafe (Unwrapped (Matrix w h t a)) => FromListUnsafe (Matrix w h t a) where
@@ -217,7 +217,7 @@ type BQuaternion = Quaternion Boxed
 
 data Transformed t a = Transformed (BQuaternion a) (t a) deriving (Show, Functor, Traversable, Foldable)
 
--- basic instances 
+-- basic instances
 
 type instance ShapeOf (XForm dim)     = '[dim,dim]
 type instance TypeOf  (XForm dim t)   = t
@@ -239,7 +239,7 @@ translation v = fromListUnsafe
               $ [ 1 ,0 ,0 ,0
                 , 0 ,1 ,0 ,0
                 , 0 ,0 ,1 ,0
-                , vx,vy,vz,1 ] 
+                , vx,vy,vz,1 ]
     where vx = v ^. x
           vy = v ^. y
           vz = v ^. z
@@ -443,7 +443,7 @@ instance Wrapped   (Array sh Boxed a) where
 
 instance FromListUnsafe (Array sh Boxed a) where
     fromListUnsafe = B_Array . fromList
---instance Reshape nsh (Array sh) Boxed where unsafeReshape _ (B_Array a) = B_Array a 
+--instance Reshape nsh (Array sh) Boxed where unsafeReshape _ (B_Array a) = B_Array a
 
 
 
@@ -505,7 +505,7 @@ type HomoProductOf a = ProductOf a a
 infixl 7 *
 class Mul a b where (*) :: a -> b -> ProductOf a b
                     default (*) :: (Num a, a ~ b, a ~ HomoProductOf a) => a -> b -> ProductOf a b
-                    (*) = (P.*) 
+                    (*) = (P.*)
 
 
 type family SumOf a b
@@ -514,7 +514,7 @@ type HomoSumOf a = SumOf a a
 infixl 7 +
 class Add a b where (+) :: a -> b -> SumOf a b
                     default (+) :: (Num a, a ~ b, a ~ HomoSumOf a) => a -> b -> SumOf a b
-                    (+) = (P.+) 
+                    (+) = (P.+)
 
 sum :: (Foldable t, Add a a, SumOf a a ~ a, Num a) => t a -> a
 sum = foldl (+) 0
@@ -539,7 +539,7 @@ instance      Add   Float Float
 type instance SumOf Double Double = Double
 instance      Add   Double Double
 
---instance {-# OVERLAPPABLE #-} (Num a, a ~ b, a ~ HomoProductOf a) => Mul a b where (*) = (P.*)  
+--instance {-# OVERLAPPABLE #-} (Num a, a ~ b, a ~ HomoProductOf a) => Mul a b where (*) = (P.*)
 
 
 
@@ -549,9 +549,9 @@ instance      Add   Double Double
 --    a * b = fromList $ (uncurry (*) <$> zip (toList a) (toList b))
 
 
-main = do 
+main = do
     --let m = fmap getSum (mempty :: Matrix 4 4 Boxed (Sum Float))
-        --let 
+        --let
         --    m = generate (\[x,y] -> (x,y)) :: Array '[3,4] Boxed (Int, Int)
         --    --m = fmap getSum (mempty :: Quaternion Boxed (Sum Int))
         --    --m = diagonal 1 0 :: Quaternion Boxed Int
@@ -595,10 +595,10 @@ main = do
 
         --lx = mconcat $ flip fmap l1 $ \i -> flip fmap l2 $ \l2i -> flip fmap l2i $ \j -> [i,j]
         --lx acc range = mconcat $ flip fmap range $ flip fmap acc . (:)
-        
+
 
     print $ multiRange [3,2,5]
-    --print $ (,,) <$> [0..4] <*> [0..3] <*> [0..5] 
+    --print $ (,,) <$> [0..4] <*> [0..3] <*> [0..5]
 
     --let m = fromList [1,2,3,4,5,6,7,8] :: Matrix 4 2 Float
     --    m2 = diagonal 1 :: Matrix 4 4 Float
@@ -628,7 +628,7 @@ multiRange = foldl lx [[]] . fmap (\a -> [0..a]) . reverse where
 
 --newtype Matrix (width :: Nat) (height :: Nat) a = Matrix { fromMatrix :: V.Vector a } deriving (Show, Eq, Functor)
 
---newtype Vec dim a = Vec {fromVec :: Matrix dim 1 a} deriving (Show, Eq, Functor) 
+--newtype Vec dim a = Vec {fromVec :: Matrix dim 1 a} deriving (Show, Eq, Functor)
 
 --encode :: Int -> (Int,Int) -> Int
 --encode m (i,j) = (i-1) * m + j - 1

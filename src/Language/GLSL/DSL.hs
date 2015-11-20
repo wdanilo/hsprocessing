@@ -101,20 +101,6 @@ instance Num Expr where
 instance Convertible Float Expr where
     convert = FloatConstant
 
--- instance Convertible (Vector n t a) Expr where
-
-vec2expr :: Float -> Float -> Expr
-vec2expr w h = FunctionCall
-                 (FuncIdTypeSpec
-                    (TypeSpec Nothing (TypeSpecNoPrecision Vec2 Nothing)))
-                 (Params [ FloatConstant w , FloatConstant h ])
-
-
---instance IsString TypeSpecifier where
-    --fromString (s:ss) = typeSpec $ Char.toUpper s : ss
-    --(+), (*), abs, signum, fromInteger, (negate | (-))
-
-
 instance t ~ Expr => IsString ([t] -> Expr) where fromString = app
 
 uniformDecl :: String -> ExternalDeclaration

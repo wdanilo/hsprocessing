@@ -113,7 +113,7 @@ myBall = Bounded (A.vec2 400 400) (ball 100.0)
        & material .~ mtl
 
 myRect :: Bounded Float (Object 2)
-myRect = Bounded (A.vec2 400 400) (hyperrectangle $ GLSLDSL.vec2expr 120.0 40.0)
+myRect = Bounded (A.vec2 400 400) (hyperrectangle $ convert (A.vec2 120.0 40.0 :: A.BVec 2 Float))
        & material .~ mtl
 
 
