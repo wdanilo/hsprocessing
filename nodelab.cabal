@@ -44,6 +44,7 @@ executable nodelab
                      Graphics.Display.Object
                      Graphics.Rendering.GLSL.SDF
                      Graphics.Rendering.GLSL.SDF.Utils
+                     Graphics.Rendering.GLSL.SDF.Figures
                      Graphics.Shading.Flat
                      Graphics.Shading.Material
                      Graphics.Shading.Pattern

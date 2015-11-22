@@ -140,6 +140,26 @@ sdf_utils = [s|
         return length( (start - p) - proj) - (width / 2.0);
     }
 
+    float sdf_halfplane(vec2 p, vec2 a) {
+        return a.x * p.x + a.y * p.y;
+    }
+
+    float sdf_halfplaneRight(vec2 p) {
+        return sdf_halfplane(p, vec2(1.0, 0.0));
+    }
+
+    float sdf_halfplaneLeft(vec2 p) {
+        return sdf_halfplane(p, vec2(-1.0, 0.0));
+    }
+
+    float sdf_halfplaneTop(vec2 p) {
+        return sdf_halfplane(p, vec2(0.0, 1.0));
+    }
+
+    float sdf_halfplaneBottom(vec2 p) {
+        return sdf_halfplane(p, vec2(0.0, -1.0));
+    }
+
     ///////////////////////
     // Masks for drawing //
     ///////////////////////

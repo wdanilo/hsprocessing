@@ -42,7 +42,6 @@ import Data.Fixed (mod')
 
 import Control.Monad.State
 
-import Math.Topology.Geometry.Figures (Ball(..), Rectangle(..))
 import Math.Space.Metric.Bounded
 import Math.Space.Dimension (Dim)
 import Math.Space.Metric.SDF
@@ -96,6 +95,9 @@ mtl      = Material $ [ Fill            . Solid $ color4 0.7 0.2 0.2 1.0
                       , Shadow 10.0 2.0 . Solid $ color4 0.0 0.0 0.0 0.2
                       ] :: Material (Layer GLSL.Expr)
 
+mtl2     = Material $ [ Fill            . Solid $ color4 0.6 0.6 0.6 1.0
+                      ] :: Material (Layer GLSL.Expr)
+
 
 
 --Material [AA, BSize] Expr
@@ -112,10 +114,26 @@ myBall :: Bounded Float (Object 2)
 myBall = Bounded (A.vec2 400 400) (ball 100.0)
        & material .~ mtl
 
-myRect :: Bounded Float (Object 2)
-myRect = Bounded (A.vec2 400 400) (hyperrectangle $ convert (A.vec2 120.0 40.0 :: A.BVec 2 Float))
-       & material .~ mtl
 
+-- test :: _ -> _
+-- test a = view A.x a
+
+
+myRect :: Bounded Float (Object 2)
+myRect = Bounded (A.vec2 400 400) (hyperrectangle (A.vec2 120.0 40.0 :: A.BVec 2 GLSL.Expr))
+       & material .~ mtl2
+
+myRectR :: Object 2
+myRectR = (hyperrectangleRounded (convert (A.vec2 120.0 40.0 :: A.BVec 2 Float)) (convert (A.vec4 10.0 10.0 10.0 10.0 :: A.BVec 4 Float)))
+       & material .~ mtl2
+
+-- myHalfPlane :: Bounded Float (Object 2)
+myHalfPlane :: Object 2
+myHalfPlane = (halfspace $ convert (A.vec2 1.0 0.0 :: A.BVec 2 Float))
+       & material .~ mtl2
+
+-- mySliderLeft :: Bounded Float (Object 2)
+-- mySliderLeft = Bounded (A.vec2 400 400) (substract myRect myHalfPlane)
 
 main = do
     let objBall = myBall
@@ -127,6 +145,16 @@ main = do
         [gw', gh'] = toList $ objRect ^. bounds
         gw = gw'/2;
         gh = gh'/2;
+
+    -- let objHalfPlane = myHalfPlane
+    --     [gw', gh'] = toList $ objHalfPlane ^. bounds
+    --     gw = gw'/2;
+    --     gh = gh'/2;
+
+    -- let objSliderLeft = mySliderLeft
+    --     [gw', gh'] = toList $ objSliderLeft ^. bounds
+    --     gw = gw'/2;
+    --     gh = gh'/2;
 
 
     runWebGUI $ \ webView -> do
@@ -155,7 +183,7 @@ main = do
 
 
 
-    putStrLn $ ppShow $ Parsec.runParser GLSL.translationUnit GLSL.S "shader parser" shader_t1
+    -- putStrLn $ ppShow $ Parsec.runParser GLSL.translationUnit GLSL.S "shader parser" shader_t1
 
 
 --zrobic datatype Program ktory bedzie wrapperem na RTuple uniformow, kotra bedziemy mogli adresowac lensami

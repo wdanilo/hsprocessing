@@ -1,4 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
+-- {-# LANGUAGE AllowAmbiguousTypes #-}
 
 module Graphics.Rendering.GLSL.SDF.Figures where
 
@@ -8,8 +9,8 @@ import           Graphics.Rendering.GLSL.SDF    (Object, object)
 import           Language.GLSL.Syntax           (Expr)
 import           Math.Space.Dimension           (Dim(Dim), convertInDim)
 import           Math.Space.Metric.SDF          (SDF(SDF))
-import           Math.Topology.Geometry.Figures (Ball(Ball), Hyperrectangle(Hyperrectangle))
 import qualified Math.Topology.Geometry.Figures as F
+import qualified Data.Array.Linear as L
 
 --ball = F.ball
 
@@ -24,16 +25,29 @@ import qualified Math.Topology.Geometry.Figures as F
 ball :: Convertible (Dim dim F.Ball Expr) (SDF dim Expr) => Expr -> Object dim
 ball r = object $ convertInDim $ F.ball r
 
-hyperrectangle :: Convertible (Dim dim F.Hyperrectangle Expr) (SDF dim Expr) => Expr -> Object dim
+
+hyperrectangle :: Convertible (F.Hyperrectangle dim t Expr) (SDF dim Expr) => L.Vector dim t Expr -> Object dim
 hyperrectangle s = object $ convertInDim $ F.hyperrectangle s
 
+hyperrectangleRounded :: Convertible (Dim dim (F.HyperrectangleRounded Expr) Expr) (SDF dim Expr) => Expr -> Expr -> Object dim
+hyperrectangleRounded s c = object $ convertInDim $ F.hyperrectangleRounded c s
+
+halfspace :: Convertible (Dim dim F.Halfspace Expr) (SDF dim Expr) => Expr -> Object dim
+halfspace a = object $ convertInDim $ F.halfspace a
 
 
 
 
 
-instance (Convertible a Expr, n ~ 2) => Convertible (Dim 2 Ball a) (SDF n Expr) where
-    convert (Dim (Ball r)) = SDF $ \v -> "sdf_ball" [convert v, convert r]
 
-instance (Convertible a Expr, n ~ 2) => Convertible (Dim 2 Hyperrectangle a) (SDF n Expr) where
-    convert (Dim (Hyperrectangle s)) = SDF $ \v -> "sdf_rect" [convert v, convert s]
+instance (Convertible a Expr, n ~ 2) => Convertible (Dim 2 F.Ball a) (SDF n Expr) where
+    convert (Dim (F.Ball r)) = SDF $ \v -> "sdf_ball" [convert v, convert r]
+
+instance (Convertible (L.Vector 2 t a) Expr, Convertible a Expr, n ~ 2) => Convertible (F.Hyperrectangle 2 t a) (SDF n Expr) where
+    convert (F.Hyperrectangle s) = SDF $ \v -> "sdf_rect" [convert v, convert s]
+
+instance (Convertible a Expr, Convertible b Expr, n ~ 2) => Convertible (Dim 2 (F.HyperrectangleRounded b) a) (SDF n Expr) where
+    convert (Dim (F.HyperrectangleRounded c s)) = SDF $ \v -> "sdf_rect" [convert v, convert s, convert c]
+
+instance (Convertible a Expr, n ~ 2) => Convertible (Dim 2 F.Halfspace a) (SDF n Expr) where
+    convert (Dim (F.Halfspace a)) = SDF $ \v -> "sdf_halfplane" [convert v, convert a]

@@ -276,6 +276,7 @@ type BVec dim = Vector dim Boxed
 type instance ShapeOf (Vector dim)     = '[dim]
 type instance TypeOf  (Vector dim t)   = t
 type instance Item    (Vector dim t a) = a
+type instance DimOf   (Vector dim t a) = dim
 
 deriving instance Show        (Array '[dim] t a) => Show        (Vector dim t a)
 deriving instance Functor     (Array '[dim] t)   => Functor     (Vector dim t)
