@@ -269,7 +269,7 @@ instance ToList (Unwrapped (XForm dim t a)) => ToList (XForm dim t a) where
 -- Vector
 -----------------------------------------------------------------------
 
-newtype Vector (dim   :: Nat) t a = Vector (Array '[dim] t a)
+newtype Vector (dim :: Nat) t a = Vector (Array '[dim] t a)
 
 type BVec dim = Vector dim Boxed
 

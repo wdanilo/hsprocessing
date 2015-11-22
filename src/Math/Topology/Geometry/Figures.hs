@@ -1,4 +1,5 @@
 {-# LANGUAGE NoMonomorphismRestriction #-}
+{-# LANGUAGE TypeOperators #-}
 
 
 module Math.Topology.Geometry.Figures where
@@ -7,6 +8,8 @@ module Math.Topology.Geometry.Figures where
 import Prologue
 import Math.Space.Dimension (Dim, DimOf, embed')
 import Data.Array.Linear
+import GHC.TypeLits
+
 
 newtype Ball a = Ball a deriving (Show, Functor, Foldable, Traversable)
 
@@ -19,18 +22,20 @@ type instance DimOf (Hyperrectangle dim t a) = dim
 
 type Rectangle t a = Hyperrectangle 2 t a
 
--- data HyperrectangleRounded (dim :: Nat) a
--- = HyperrectangleRounded  (Vec dim a) (Vec (dim * 2) a) deriving (Show, Functor, Foldable, Traversable)
+
+data HyperrectangleRounded (dim :: Nat) t a = HyperrectangleRounded (Vector dim t a) (Vector (2 ^ dim) t a)
+
+type instance DimOf (HyperrectangleRounded dim t a) = dim
+
+type RectangleRounded t a = HyperrectangleRounded 2 t a
 
 
-data HyperrectangleRounded b a = HyperrectangleRounded b a deriving (Show, Functor, Foldable, Traversable)
+data Halfspace (dim :: Nat) t a = Halfspace (Vector dim t a)
 
-type RectangleRounded b a = Dim 2 (HyperrectangleRounded b) a
+type instance DimOf (Halfspace dim t a) = dim
 
+type Halfplane t a = Halfspace 2 t a
 
-newtype Halfspace a = Halfspace a deriving (Show, Functor, Foldable, Traversable)
-
-type Halfplane a = Dim 2 Halfspace a
 
 -- TODO: Extend the definition to Regular prism (https://en.wikipedia.org/wiki/Cube)
 -- data Rect a = Rect (Vector 2 a) deriving (Show)
@@ -43,15 +48,6 @@ circle :: a -> Circle a
 circle = ball
 
 
--- hyperrectangleP :: Proxy d -> t -> a -> Hyperrectangle d t a
--- hyperrectangleP = Hyperrectangle
-
--- hyperrectangle :: t -> a -> Hyperrectangle d t a
--- hyperrectangle = hyperrectangleP Proxy
-
--- rectangle :: t -> a -> Rectangle t a
--- rectangle = hyperrectangle
-
 hyperrectangle :: Vector dim t a -> Hyperrectangle dim t a
 hyperrectangle = Hyperrectangle
 
@@ -59,15 +55,15 @@ rectangle :: Vector 2 t a -> Rectangle t a
 rectangle = hyperrectangle
 
 
-hyperrectangleRounded :: b -> a -> Dim n (HyperrectangleRounded b) a
-hyperrectangleRounded = embed' .: HyperrectangleRounded
+hyperrectangleRounded :: Vector dim t a -> Vector (2 ^ dim) t a -> HyperrectangleRounded dim t a
+hyperrectangleRounded = HyperrectangleRounded
 
-rectangleRounded :: b -> a -> RectangleRounded b a
+rectangleRounded :: Vector 2 t a -> Vector 4 t a -> RectangleRounded t a
 rectangleRounded = hyperrectangleRounded
 
 
-halfspace :: a -> Dim n Halfspace a
-halfspace = embed' . Halfspace
+halfspace :: Vector dim t a -> Halfspace dim t a
+halfspace = Halfspace
 
-halfplane :: a -> Halfplane a
+halfplane :: Vector 2 t a -> Halfplane t a
 halfplane = halfspace

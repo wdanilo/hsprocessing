@@ -123,13 +123,13 @@ myRect :: Bounded Float (Object 2)
 myRect = Bounded (A.vec2 400 400) (hyperrectangle (A.vec2 120.0 40.0 :: A.BVec 2 GLSL.Expr))
        & material .~ mtl2
 
-myRectR :: Object 2
-myRectR = (hyperrectangleRounded (convert (A.vec2 120.0 40.0 :: A.BVec 2 Float)) (convert (A.vec4 10.0 10.0 10.0 10.0 :: A.BVec 4 Float)))
+myRectR :: Bounded Float (Object 2)
+myRectR = Bounded (A.vec2 400 400) (hyperrectangleRounded (A.vec2 120.0 40.0 :: A.BVec 2 GLSL.Expr) (A.vec4 10.0 10.0 10.0 10.0 :: A.BVec 4 GLSL.Expr))
        & material .~ mtl2
 
 -- myHalfPlane :: Bounded Float (Object 2)
-myHalfPlane :: Object 2
-myHalfPlane = (halfspace $ convert (A.vec2 1.0 0.0 :: A.BVec 2 Float))
+myHalfPlane :: Bounded Float (Object 2)
+myHalfPlane = Bounded (A.vec2 400 400) (halfspace (A.vec2 1.0 0.0 :: A.BVec 2 GLSL.Expr))
        & material .~ mtl2
 
 -- mySliderLeft :: Bounded Float (Object 2)
@@ -146,10 +146,15 @@ main = do
         gw = gw'/2;
         gh = gh'/2;
 
-    -- let objHalfPlane = myHalfPlane
-    --     [gw', gh'] = toList $ objHalfPlane ^. bounds
-    --     gw = gw'/2;
-    --     gh = gh'/2;
+    let objRectR = myRectR
+        [gw', gh'] = toList $ objRectR ^. bounds
+        gw = gw'/2;
+        gh = gh'/2;
+
+    let objHalfPlane = myHalfPlane
+        [gw', gh'] = toList $ objHalfPlane ^. bounds
+        gw = gw'/2;
+        gh = gh'/2;
 
     -- let objSliderLeft = mySliderLeft
     --     [gw', gh'] = toList $ objSliderLeft ^. bounds
@@ -163,7 +168,7 @@ main = do
         runjs $ do
             ctx     <- initCanvas
 
-            GLSL.Program jsProg aa <- GLSL.compileMaterial objRect
+            GLSL.Program jsProg aa <- GLSL.compileMaterial objHalfPlane
 
             buffers <- makeRectGeo ctx gw gh
 
