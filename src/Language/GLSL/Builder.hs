@@ -208,6 +208,10 @@ instance Convertible a Expr => Convertible (Color RGBA a) Expr where
     convert (view wrapped -> c) = "vec4" [ convert $ c ^. A.x, convert $ c ^. A.y, convert $ c ^. A.z, convert $ c ^. A.w ]
 
 instance MonadGLSL m => GLSLBuilder (Object 2) m (Uniform2 AA) where
+    toGLSL (Object (O.Object (Shaded (Material layers) (Transformed xform (Bool.Compound (Bool.Expr (Combination (Diff expr1 expr2)))))))) = do
+        aa <- newUniform2 AA (0.0 :: Float)
+        return (aa)
+
     toGLSL (Object (O.Object (Shaded (Material layers) (Transformed xform (Bool.Compound (Bool.Val obj)))))) = do
 
         let sdf = convert obj :: SDF 2 Expr
@@ -271,16 +275,18 @@ instance MonadGLSL m => GLSLBuilder (Object 2) m (Uniform2 AA) where
                 return (g'', glslGTrans <> glslBgrnd <> glslLayer)
 
         let rest = [ val float gstart $ runSDF sdf p
-                   -- , val vec4  fill    $ "vec4" [1.0,0.4,0.0, "sdf_aa"[g]]
                    , color .= "vec4" [0.1,0.1,0.1,0.0]
                    ]
 
+        let transl = [ val mat4 "xform" $ convert xform
+                     , "p" .= "appTrans2D" ["p", "xform"]
+                     ]
 
         gExpr <- (rest <>) . snd <$> drawLayers gstart layers
         let u = unit [   func' "main" [ param void ] $ [ val vec3 "local"  $ "world" - "origin"
                                                        , val vec3 "ulocal" $ "local" * "dpr"
                                                        , val vec2 "p"      $ ("ulocal" .> "xy")
-                                                       ] <> gExpr
+                                                       ] <> transl <> gExpr
                      ]
         setTUnit u
         return (aa)

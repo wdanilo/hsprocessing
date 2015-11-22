@@ -4,13 +4,17 @@ module Math.Algebra.Boolean where
 import Prologue
 
 
+data Combination a = Combination       a
+                   | Diffused    Float a
+                   deriving (Show, Functor)
 
-data Boolean a = Merge Float a a
-               | Diff        a a
+
+data Boolean a = Merge a a
+               | Diff  a a
                deriving (Show, Functor)
 
 data Expr a = Val a
-            | Expr  (Boolean (Expr a))
+            | Expr (Combination (Boolean (Expr a)))
             deriving (Show, Functor)
 
 newtype Compound t a = Compound (Expr (t a)) deriving (Show, Functor)

@@ -49,7 +49,7 @@ import Graphics.Shading.Material
 import Graphics.Shading.Flat
 import Graphics.Shading.Pattern
 import qualified Graphics.Display.Object as O
-import Graphics.Rendering.GLSL.SDF (object, Object)
+import Graphics.Rendering.GLSL.SDF (object, Object, translate)
 import Graphics.Rendering.GLSL.SDF.Figures
 
 import Graphics.Rendering.WebGL
@@ -124,12 +124,13 @@ myRect = Bounded (A.vec2 400 400) (hyperrectangle (A.vec2 120.0 40.0 :: A.BVec 2
        & material .~ mtl2
 
 myRectR :: Bounded Float (Object 2)
-myRectR = Bounded (A.vec2 400 400) (hyperrectangleRounded (A.vec2 120.0 40.0 :: A.BVec 2 GLSL.Expr) (A.vec4 10.0 10.0 10.0 10.0 :: A.BVec 4 GLSL.Expr))
+myRectR = Bounded (A.vec2 400 400) (translate (A.vec3 100.0 10.0 0.0)
+    (hyperrectangleRounded (A.vec2 120.0 40.0 :: A.BVec 2 GLSL.Expr) (A.vec4 10.0 10.0 10.0 10.0 :: A.BVec 4 GLSL.Expr)))
        & material .~ mtl2
 
 -- myHalfPlane :: Bounded Float (Object 2)
 myHalfPlane :: Bounded Float (Object 2)
-myHalfPlane = Bounded (A.vec2 400 400) (halfspace (A.vec2 1.0 0.0 :: A.BVec 2 GLSL.Expr))
+myHalfPlane = Bounded (A.vec2 400 400) (translate (A.vec3 100.0 10.0 0.0) (halfspace (A.vec2 1.0 0.0 :: A.BVec 2 GLSL.Expr)))
        & material .~ mtl2
 
 -- mySliderLeft :: Bounded Float (Object 2)
@@ -168,7 +169,7 @@ main = do
         runjs $ do
             ctx     <- initCanvas
 
-            GLSL.Program jsProg aa <- GLSL.compileMaterial objHalfPlane
+            GLSL.Program jsProg aa <- GLSL.compileMaterial objRectR
 
             buffers <- makeRectGeo ctx gw gh
 

@@ -1,3 +1,5 @@
+{-# LANGUAGE NoMonomorphismRestriction #-}
+
 module Graphics.Rendering.GLSL.SDF where
 
 
@@ -37,10 +39,21 @@ instance HasMaterial (Object dim) where material = wrapped . material
 object :: SDF n Expr -> Object n
 object = Object . Display.Object . Shaded def . Transformed mempty . Compound . Bool.Val
 
+translate :: Vector 3 Boxed Expr -> Object n -> Object n
+translate v (Object (Display.Object (Shaded material (Transformed _ comp)))) =
+    (Object (Display.Object (Shaded material (Transformed xform comp)))) where
+        xform = translation v :: BQuaternion Expr
 
 
 -- === External instances ===
 
+unwrap'     = view wrapped'   -- update to Prologue >= 1.0.6 and remove
 
 instance (Convertible a Expr, KnownNat dim) => Convertible (BVec dim a) Expr where
     convert v = fromString ("vec" <> show (natVal (Proxy :: Proxy dim))) $ fmap convert $ toList v
+
+instance (Convertible a Expr, KnownNat dim) => Convertible (Matrix dim dim Boxed a) Expr where
+    convert v = fromString ("mat" <> show (natVal (Proxy :: Proxy dim))) $ fmap convert $ toList v
+
+instance (Convertible a Expr) => Convertible (BQuaternion a) Expr where
+    convert = convert . unwrap'
