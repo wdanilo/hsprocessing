@@ -68,6 +68,7 @@ div = Div
 
 app name params = FunctionCall (FuncId name) (Params params)
 
+expr a = ExpressionStatement (Just a)
 
 func tp name args body = FunctionDefinition (FuncProt (FullType Nothing tp) name args) (Compound body)
 func' = func void

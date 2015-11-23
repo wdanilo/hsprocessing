@@ -49,7 +49,7 @@ import Graphics.Shading.Material
 import Graphics.Shading.Flat
 import Graphics.Shading.Pattern
 import qualified Graphics.Display.Object as O
-import Graphics.Rendering.GLSL.SDF (object, Object, translate)
+import Graphics.Rendering.GLSL.SDF (object, Object, translate, diff, merge)
 import Graphics.Rendering.GLSL.SDF.Figures
 
 import Graphics.Rendering.WebGL
@@ -130,11 +130,15 @@ myRectR = Bounded (A.vec2 400 400) (translate (A.vec3 100.0 10.0 0.0)
 
 -- myHalfPlane :: Bounded Float (Object 2)
 myHalfPlane :: Bounded Float (Object 2)
-myHalfPlane = Bounded (A.vec2 400 400) (translate (A.vec3 100.0 10.0 0.0) (halfspace (A.vec2 1.0 0.0 :: A.BVec 2 GLSL.Expr)))
+myHalfPlane = Bounded (A.vec2 400 400) (translate (A.vec3 10.0 10.0 0.0) (halfspace (A.vec2 1.0 0.0 :: A.BVec 2 GLSL.Expr)))
        & material .~ mtl2
 
--- mySliderLeft :: Bounded Float (Object 2)
--- mySliderLeft = Bounded (A.vec2 400 400) (substract myRect myHalfPlane)
+
+myMix :: Bounded Float (Object 2)
+myMix = Bounded (A.vec2 400 400) (merge (myRect ^. bounded) (myHalfPlane ^. bounded))
+
+mySliderLeft :: Bounded Float (Object 2)
+mySliderLeft = Bounded (A.vec2 400 400) (diff (myRect ^. bounded) (myHalfPlane ^. bounded))
 
 main = do
     let objBall = myBall
@@ -157,10 +161,15 @@ main = do
         gw = gw'/2;
         gh = gh'/2;
 
-    -- let objSliderLeft = mySliderLeft
-    --     [gw', gh'] = toList $ objSliderLeft ^. bounds
-    --     gw = gw'/2;
-    --     gh = gh'/2;
+    let objMix = myMix
+        [gw', gh'] = toList $ objMix ^. bounds
+        gw = gw'/2;
+        gh = gh'/2;
+
+    let objSliderLeft = mySliderLeft
+        [gw', gh'] = toList $ objSliderLeft ^. bounds
+        gw = gw'/2;
+        gh = gh'/2;
 
 
     runWebGUI $ \ webView -> do
@@ -169,7 +178,7 @@ main = do
         runjs $ do
             ctx     <- initCanvas
 
-            GLSL.Program jsProg aa <- GLSL.compileMaterial objRectR
+            GLSL.Program jsProg aa <- GLSL.compileMaterial objMix
 
             buffers <- makeRectGeo ctx gw gh
 
@@ -189,7 +198,7 @@ main = do
 
 
 
-    -- putStrLn $ ppShow $ Parsec.runParser GLSL.translationUnit GLSL.S "shader parser" shader_t1
+    -- putStrLn $ ppShow $ Parsec.runParser GLSL.translationUnit GLSL.S "shader parser" shader_t4
 
 
 --zrobic datatype Program ktory bedzie wrapperem na RTuple uniformow, kotra bedziemy mogli adresowac lensami
@@ -215,6 +224,9 @@ shader_t2 = [s|vec2 v = vec2(2.0, 3.0); |]
 
 shader_t3 :: String
 shader_t3 = [s|void main(void) { vec2 a = vec2(2.0, 3.0); } |]
+
+shader_t4 :: String
+shader_t4 = [s|void main(void) { fun1(); fun2(); x = fun3(); } |]
 
 
 -- | To parse shader and see its representation use:

@@ -123,7 +123,9 @@ instance MonadGLSL (State GLSLState) where
 instance Monoid GLSLState where
     mempty = GLSLState (TranslationUnit []) mempty mempty ((\s -> ("_" <> s <> "_")) .: flip (:) <$> ("" : fmap show [0..]) <*> ['a' .. 'z'])
 
-
+instance Monoid TranslationUnit where
+    mempty = TranslationUnit []
+    mappend (TranslationUnit a) (TranslationUnit b) = TranslationUnit $ a <> b
 
 -- === GLSL Program ===
 
@@ -135,7 +137,7 @@ type JSProgram        = Program JSRef
 -- === GLSL Builder ===
 
 class GLSLBuilder t m unis | t -> unis where
-    toGLSL :: t -> m unis
+    toGLSL :: String -> t -> m unis
 
 
 -- Utils
@@ -182,9 +184,15 @@ newUniform2 t a = do
     withState $ uniforms %~ (UniformDecl "dupa" (toDecl2 uni) :)
     return uni
 
+newUniform3 :: (MonadGLSL m, IsUniform2 t) => t -> (UniformType t) -> m (Uniform2 t)
+newUniform3 t a = do
+    let uni = Uniform2 a
+    withState $ uniforms .~ [UniformDecl "dupa" (toDecl2 uni)]
+    return uni
+
 compileMaterial :: (MonadIO m, GLSLBuilder t (State GLSLState) u) => t -> m (JSProgram u)
 compileMaterial obj = do
-    let (glsl, u) = runBuilder $ toGLSL obj
+    let (glsl, u) = runBuilder $ toGLSL "main" obj
     putStrLn "GENERATED:"
     putStrLn glsl
     flip Program u <$> compileShader glsl
@@ -195,24 +203,58 @@ setTUnit a = withState $ glslAST .~ a
 -- === SDF Building ===
 
 
-
 data AA = AA deriving (Show)
 type instance UniformType AA = Float
 
 instance IsUniformID AA where reprID _ = "aa"
 
 
-
-
 instance Convertible a Expr => Convertible (Color RGBA a) Expr where
     convert (view wrapped -> c) = "vec4" [ convert $ c ^. A.x, convert $ c ^. A.y, convert $ c ^. A.z, convert $ c ^. A.w ]
 
 instance MonadGLSL m => GLSLBuilder (Object 2) m (Uniform2 AA) where
-    toGLSL (Object (O.Object (Shaded (Material layers) (Transformed xform (Bool.Compound (Bool.Expr (Combination (Diff expr1 expr2)))))))) = do
-        aa <- newUniform2 AA (0.0 :: Float)
+    toGLSL funName (Object (O.Object (Shaded (Material layers) (Transformed xform (Bool.Compound (Bool.Expr (Combination (Merge expr1 expr2)))))))) = do
+        aa <- newUniform3 AA (0.0 :: Float)
+        Variable fun1 <- newName "fun"
+        Variable fun2 <- newName "fun"
+        toGLSL fun1 (Object (O.Object (Shaded (Material layers) (Transformed xform (Bool.Compound expr1)))))
+        f1 <- getState
+        toGLSL fun2 (Object (O.Object (Shaded (Material layers) (Transformed xform (Bool.Compound expr2)))))
+        f2 <- getState
+
+        -- should use sdf merge instead
+        let u = unit [ func' funName [ param void ] $ [ expr $ app fun1 []
+                                                      , expr $ app fun2 []
+                                                      ]
+                     ]
+
+        let newAST = (f1 ^. glslAST) <> (f2 ^. glslAST) <> u
+
+        setTUnit newAST
         return (aa)
 
-    toGLSL (Object (O.Object (Shaded (Material layers) (Transformed xform (Bool.Compound (Bool.Val obj)))))) = do
+    toGLSL funName (Object (O.Object (Shaded (Material layers) (Transformed xform (Bool.Compound (Bool.Expr (Combination (Diff expr1 expr2)))))))) = do
+        aa <- newUniform3 AA (0.0 :: Float)
+        Variable fun1 <- newName "fun"
+        Variable fun2 <- newName "fun"
+        toGLSL fun1 (Object (O.Object (Shaded (Material layers) (Transformed xform (Bool.Compound expr1)))))
+        f1 <- getState
+        toGLSL fun2 (Object (O.Object (Shaded (Material layers) (Transformed xform (Bool.Compound expr2)))))
+        f2 <- getState
+
+
+        let u = unit [ func' funName [ param void ] $ [ expr $ app fun1 []
+                                                      -- , expr $ app fun2 []
+                                                      ]
+                     ]
+
+        -- let newAST = (f1 ^. glslAST) <> (f2 ^. glslAST) <> u
+        let newAST = (f1 ^. glslAST) <> u
+
+        setTUnit newAST
+        return (aa)
+
+    toGLSL funName (Object (O.Object (Shaded (Material layers) (Transformed xform (Bool.Compound (Bool.Val obj)))))) = do
 
         let sdf = convert obj :: SDF 2 Expr
 
@@ -223,7 +265,7 @@ instance MonadGLSL m => GLSLBuilder (Object 2) m (Uniform2 AA) where
         gstart <- newName "sdf"
 
         --aa <- newUniform "aa" (0.0 :: Float)
-        aa <- newUniform2 AA (0.0 :: Float)
+        aa <- newUniform3 AA (0.0 :: Float)
 
 
         let drawPattern = \case
@@ -275,18 +317,18 @@ instance MonadGLSL m => GLSLBuilder (Object 2) m (Uniform2 AA) where
                 return (g'', glslGTrans <> glslBgrnd <> glslLayer)
 
         let rest = [ val float gstart $ runSDF sdf p
-                   , color .= "vec4" [0.1,0.1,0.1,0.0]
-                   ]
+                   -- , color .= "vec4" [0.1,0.1,0.1,0.0]
+                   ] <> if funName == "main" then [color .= "vec4" [0.1,0.1,0.1,0.0]] else []
 
         let transl = [ val mat4 "xform" $ convert xform
                      , "p" .= "appTrans2D" ["p", "xform"]
                      ]
 
         gExpr <- (rest <>) . snd <$> drawLayers gstart layers
-        let u = unit [   func' "main" [ param void ] $ [ val vec3 "local"  $ "world" - "origin"
-                                                       , val vec3 "ulocal" $ "local" * "dpr"
-                                                       , val vec2 "p"      $ ("ulocal" .> "xy")
-                                                       ] <> transl <> gExpr
+        let u = unit [ func' funName [ param void ] $ [ val vec3 "local"  $ "world" - "origin"
+                                                      , val vec3 "ulocal" $ "local" * "dpr"
+                                                      , val vec2 "p"      $ ("ulocal" .> "xy")
+                                                      ] <> transl <> gExpr
                      ]
         setTUnit u
         return (aa)
@@ -308,5 +350,5 @@ runBuilder a = (shader_header <> ufsGLSL <> sdf_utils <> prettyShow glsl, u) whe
 -- Instances
 
 instance GLSLBuilder t m u => GLSLBuilder (Bounded b t) m u where
-    toGLSL (Bounded _ a) = toGLSL a
+    toGLSL funName (Bounded _ a) = toGLSL funName a
 

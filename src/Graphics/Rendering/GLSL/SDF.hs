@@ -7,7 +7,7 @@ import Prologue
 
 import           Data.Array.Linear
 import           Language.GLSL.Syntax      (Expr)
-import           Math.Algebra.Boolean      (Compound(..))
+import           Math.Algebra.Boolean      (Compound(..), Combination(..))
 import qualified Math.Algebra.Boolean      as Bool
 import           Math.Space.Dimension      (DimOf)
 import           Math.Space.Metric.SDF     (SDF)
@@ -44,6 +44,15 @@ translate v (Object (Display.Object (Shaded material (Transformed _ comp)))) =
     (Object (Display.Object (Shaded material (Transformed xform comp)))) where
         xform = translation v :: BQuaternion Expr
 
+diff :: Object n -> Object n -> Object n
+diff (Object (Display.Object (Shaded material (Transformed xform (Bool.Compound expr1)))))
+     (Object (Display.Object (Shaded _        (Transformed _     (Bool.Compound expr2))))) =
+        (Object (Display.Object (Shaded material (Transformed xform (Bool.Compound (Bool.Expr (Combination (Bool.Diff expr1 expr2))))))))
+
+merge :: Object n -> Object n -> Object n
+merge (Object (Display.Object (Shaded material (Transformed xform (Bool.Compound expr1)))))
+      (Object (Display.Object (Shaded _        (Transformed _     (Bool.Compound expr2))))) =
+        (Object (Display.Object (Shaded material (Transformed xform (Bool.Compound (Bool.Expr (Combination (Bool.Merge expr1 expr2))))))))
 
 -- === External instances ===
 

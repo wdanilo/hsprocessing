@@ -829,6 +829,33 @@
         gl_FragColor = vec4(mix(color2, gl_FragColor.xyz, 1.0 - gSliderRight), 1.0);
     }
 
+    void fun_a_ (void)
+    { vec3 local = world - origin;
+      vec3 ulocal = local * dpr;
+      vec2 p = ulocal.xy;
+      mat4 xform = mat4 (1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1);
+      p = appTrans2D (p, xform);
+      float sdf_c_ = sdf_rect (vec2 (p.x, p.y), vec2 (120.0, 40.0));
+      gl_FragColor = vec4 (0.1, 0.1, 0.1, 0.0);
+      vec4 fill_d_ = vec4 (0.6, 0.6, 0.6, 1.0);
+      gl_FragColor = vec4 (mix (gl_FragColor.rgb, fill_d_.rgb, sdf_aa (sdf_c_) * fill_d_.a), 1.0);
+    }
+    void fun_b_ (void)
+    { vec3 local = world - origin;
+      vec3 ulocal = local * dpr;
+      vec2 p = ulocal.xy;
+      mat4 xform = mat4 (1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1);
+      p = appTrans2D (p, xform);
+      float sdf_e_ = sdf_halfplane (vec2 (p.x, p.y), vec2 (1.0, 0.0));
+      // gl_FragColor = vec4 (0.1, 0.1, 0.1, 0.0);
+      vec4 fill_f_ = vec4 (0.6, 0.6, 0.6, 1.0);
+      gl_FragColor = vec4 (mix (gl_FragColor.rgb, fill_f_.rgb, sdf_aa (sdf_e_) * fill_f_.a), 1.0);
+    }
+    void testLib (void)
+    { fun_a_ ();
+      fun_b_ ();
+    }
+
     void main(void) {
         // test1();
         // test2();
@@ -837,7 +864,8 @@
         // testSlider2();
         // testSlider3();
         // testSlider4();
-        testSlider5();
+        // testSlider5();
+        testLib();
     }
 </script>
 
