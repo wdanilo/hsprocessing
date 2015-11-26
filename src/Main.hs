@@ -198,7 +198,7 @@ main = do
 
 
 
-    -- putStrLn $ ppShow $ Parsec.runParser GLSL.translationUnit GLSL.S "shader parser" shader_t4
+    putStrLn $ ppShow $ Parsec.runParser GLSL.translationUnit GLSL.S "shader parser" shader_t5
 
 
 --zrobic datatype Program ktory bedzie wrapperem na RTuple uniformow, kotra bedziemy mogli adresowac lensami
@@ -226,7 +226,10 @@ shader_t3 :: String
 shader_t3 = [s|void main(void) { vec2 a = vec2(2.0, 3.0); } |]
 
 shader_t4 :: String
-shader_t4 = [s|void main(void) { fun1(); fun2(); x = fun3(); } |]
+shader_t4 = [s|void main(void) { float a = 1.0; fun1(); fun2(); x = fun3(); } |]
+
+shader_t5 :: String
+shader_t5 = [s|float a = 1.0; fun1(); fun2(); x = fun3();|]
 
 
 -- | To parse shader and see its representation use:

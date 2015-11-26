@@ -70,7 +70,9 @@ app name params = FunctionCall (FuncId name) (Params params)
 
 expr a = ExpressionStatement (Just a)
 
-func tp name args body = FunctionDefinition (FuncProt (FullType Nothing tp) name args) (Compound body)
+compound body = Compound body
+
+func tp name args body = FunctionDefinition (FuncProt (FullType Nothing tp) name args) body
 func' = func void
 
 val tp (Variable name) expr = DeclarationStatement (InitDeclaration (TypeDeclarator (FullType Nothing tp))  [ InitDecl name Nothing (Just expr) ])
