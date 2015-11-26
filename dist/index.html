@@ -719,6 +719,56 @@
         gl_FragColor = mix(colorSign, gl_FragColor, 1.0 - sdf_aa(gTriangle));
     }
 
+    void testToggle(void) {
+        vec3 local   = world - origin;
+        vec3 ulocal  = local * dpr;
+
+        mat4 xform1 = mat4 ( 1.0, 0.0, 0.0, 0.0
+                           , 0.0, 0.8, 0.0, 0.0
+                           , 0.0, 0.0, 1.0, 0.0
+                           , 0.0, 0.0, 0.0, 1.0
+                           );
+
+        mat4 xform2 = mat4 ( 0.8, 0.0, 0.0, 0.0
+                           , 0.0, 1.0, 0.0, 0.0
+                           , 0.0, 0.0, 1.0, 0.0
+                           , 0.0, 0.0, 0.0, 1.0
+                           );
+
+        mat4 xform = xform1 * xform2;
+
+        vec2 p = ulocal.xy;
+        vec2 c = dim.xy / 2.0;
+        vec2 z = p / dim.xy;
+
+        p = appTrans2D(p, xform);
+
+        vec2 size = vec2(40.0, 20.0);
+
+        float radius = min(size.x, size.y) / 2.0;
+
+        int value = 0;
+        float width  = size.x;
+        float height = size.y;
+        float toggleWidth  = width * 0.5;
+        float toggleHeight = height * 0.8;
+
+        float roundFactor = 2.0;
+
+        float shift = 0.8 * (float(value) * width / 2.0 - width / 4.0);
+
+        float gRect   = sdf_rect(p, vec2(width, height), roundFactor * vec4(1.0, 1.0, 1.0, 1.0));
+        float gToggle = sdf_rect(translate(p, vec2(shift, 0.0)), vec2(toggleWidth, toggleHeight), roundFactor * vec4(1.0, 1.0, 1.0, 1.0));
+
+        vec4 colorBackground = vec4(0.6, 0.6, 0.6, 1.0);
+        vec4 colorToggle     = vec4(0.2, 0.2, 0.2, 1.0);
+
+        gl_FragColor = vec4(0.0, 0.3, 0.0, 1.0);
+
+        gl_FragColor = mix(colorBackground, gl_FragColor, 1.0 - sdf_aa(gRect));
+        gl_FragColor = mix(colorToggle,     gl_FragColor, 1.0 - sdf_aa(gToggle));
+    }
+
     void fun_a_ (void)
     { vec3 local = world - origin;
       vec3 ulocal = local * dpr;
@@ -754,7 +804,8 @@
         // testLib();
         // testRadio();
         // testSign();
-        testTriangle();
+        // testTriangle();
+        testToggle();
     }
 </script>
 
