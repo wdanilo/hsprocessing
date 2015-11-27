@@ -45,14 +45,14 @@ translate v (Object (Display.Object (Shaded material (Transformed _ comp)))) =
         xform = translation v :: BQuaternion Expr
 
 diff :: Object n -> Object n -> Object n
-diff (Object (Display.Object (Shaded material (Transformed xform (Bool.Compound expr1)))))
-     (Object (Display.Object (Shaded _        (Transformed _     (Bool.Compound expr2))))) =
-        (Object (Display.Object (Shaded material (Transformed xform (Bool.Compound (Bool.Expr (Combination (Bool.Diff expr1 expr2))))))))
+diff (Object (Display.Object (Shaded material1 (Transformed xform1 (Compound expr1)))))
+     (Object (Display.Object (Shaded material2 (Transformed xform2 (Compound expr2))))) =
+        (Object (Display.Object (Shaded material1 (Transformed xform1 (Compound (Bool.Expr (Combination (Bool.Diff expr1 expr2))))))))
 
 merge :: Object n -> Object n -> Object n
-merge (Object (Display.Object (Shaded material (Transformed xform (Bool.Compound expr1)))))
-      (Object (Display.Object (Shaded _        (Transformed _     (Bool.Compound expr2))))) =
-        (Object (Display.Object (Shaded material (Transformed xform (Bool.Compound (Bool.Expr (Combination (Bool.Merge expr1 expr2))))))))
+merge (Object (Display.Object (Shaded material1 (Transformed xform1 (Compound expr1)))))
+      (Object (Display.Object (Shaded material2 (Transformed xform2 (Compound expr2))))) =
+        (Object (Display.Object (Shaded material1 (Transformed xform1 (Compound (Bool.Expr (Combination (Bool.Merge expr1 expr2))))))))
 
 -- === External instances ===
 

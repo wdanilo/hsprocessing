@@ -98,6 +98,9 @@ mtl      = Material $ [ Fill            . Solid $ color4 0.7 0.2 0.2 1.0
 mtl2     = Material $ [ Fill            . Solid $ color4 0.6 0.6 0.6 1.0
                       ] :: Material (Layer GLSL.Expr)
 
+mtl3     = Material $ [ Fill            . Solid $ color4 0.3 0.3 0.3 1.0
+                      ] :: Material (Layer GLSL.Expr)
+
 
 
 --Material [AA, BSize] Expr
@@ -120,25 +123,47 @@ myBall = Bounded (A.vec2 400 400) (ball 100.0)
 
 
 myRect :: Bounded Float (Object 2)
-myRect = Bounded (A.vec2 400 400) (hyperrectangle (A.vec2 120.0 40.0 :: A.BVec 2 GLSL.Expr))
+myRect = Bounded (A.vec2 400 400) (hyperrectangle (A.vec2 180.0 40.0 :: A.BVec 2 GLSL.Expr))
+       & material .~ mtl2
+
+-- myRectR :: Bounded Float (Object 2)
+-- myRectR = Bounded (A.vec2 400 400) (translate (A.vec3 180.0 10.0 0.0)
+--     (hyperrectangleRounded (A.vec2 120.0 40.0 :: A.BVec 2 GLSL.Expr) (A.vec4 10.0 10.0 10.0 10.0 :: A.BVec 4 GLSL.Expr)))
+--        & material .~ mtl2
+
+myRectL :: Bounded Float (Object 2)
+myRectL = Bounded (A.vec2 400 400) (hyperrectangleRounded (A.vec2 180.0 20.0 :: A.BVec 2 GLSL.Expr) (A.vec4 10.0 10.0 10.0 10.0 :: A.BVec 4 GLSL.Expr))
        & material .~ mtl2
 
 myRectR :: Bounded Float (Object 2)
-myRectR = Bounded (A.vec2 400 400) (translate (A.vec3 100.0 10.0 0.0)
-    (hyperrectangleRounded (A.vec2 120.0 40.0 :: A.BVec 2 GLSL.Expr) (A.vec4 10.0 10.0 10.0 10.0 :: A.BVec 4 GLSL.Expr)))
-       & material .~ mtl2
+myRectR = Bounded (A.vec2 400 400) (hyperrectangleRounded (A.vec2 180.0 20.0 :: A.BVec 2 GLSL.Expr) (A.vec4 10.0 10.0 10.0 10.0 :: A.BVec 4 GLSL.Expr))
+       & material .~ mtl3
+
+value = 10.0
 
 -- myHalfPlane :: Bounded Float (Object 2)
-myHalfPlane :: Bounded Float (Object 2)
-myHalfPlane = Bounded (A.vec2 400 400) (translate (A.vec3 10.0 10.0 0.0) (halfspace (A.vec2 1.0 0.0 :: A.BVec 2 GLSL.Expr)))
+myHalfPlaneL :: Bounded Float (Object 2)
+myHalfPlaneL = Bounded (A.vec2 400 400) (translate (A.vec3 value 0.0 0.0) (halfspace (A.vec2 1.0 0.0 :: A.BVec 2 GLSL.Expr)))
+       & material .~ mtl3
+
+
+myHalfPlaneR :: Bounded Float (Object 2)
+myHalfPlaneR = Bounded (A.vec2 400 400) (translate (A.vec3 value 0.0 0.0) (halfspace (A.vec2 (-1.0) 0.0 :: A.BVec 2 GLSL.Expr)))
        & material .~ mtl2
 
 
 myMix :: Bounded Float (Object 2)
-myMix = Bounded (A.vec2 400 400) (merge (myRect ^. bounded) (myHalfPlane ^. bounded))
+myMix = Bounded (A.vec2 400 400) (merge (myRect ^. bounded) (myHalfPlaneL ^. bounded))
 
-mySliderLeft :: Bounded Float (Object 2)
-mySliderLeft = Bounded (A.vec2 400 400) (diff (myRect ^. bounded) (myHalfPlane ^. bounded))
+mySliderL :: Bounded Float (Object 2)
+mySliderL = Bounded (A.vec2 400 400) (diff (myHalfPlaneR ^. bounded) (myRectL ^. bounded)) & material .~ mtl2
+
+mySliderR :: Bounded Float (Object 2)
+mySliderR = Bounded (A.vec2 400 400) (diff (myHalfPlaneL ^. bounded) (myRectR ^. bounded)) & material .~ mtl3
+
+mySlider :: Bounded Float (Object 2)
+mySlider = Bounded (A.vec2 400 400) (merge (mySliderL ^. bounded) (mySliderR ^. bounded)) & material .~ mtl
+
 
 main = do
     let objBall = myBall
@@ -156,18 +181,13 @@ main = do
         gw = gw'/2;
         gh = gh'/2;
 
-    let objHalfPlane = myHalfPlane
-        [gw', gh'] = toList $ objHalfPlane ^. bounds
-        gw = gw'/2;
-        gh = gh'/2;
-
     let objMix = myMix
         [gw', gh'] = toList $ objMix ^. bounds
         gw = gw'/2;
         gh = gh'/2;
 
-    let objSliderLeft = mySliderLeft
-        [gw', gh'] = toList $ objSliderLeft ^. bounds
+    let objSlider = mySlider
+        [gw', gh'] = toList $ objSlider ^. bounds
         gw = gw'/2;
         gh = gh'/2;
 
@@ -178,7 +198,7 @@ main = do
         runjs $ do
             ctx     <- initCanvas
 
-            GLSL.Program jsProg aa <- GLSL.compileMaterial objMix
+            GLSL.Program jsProg aa <- GLSL.compileMaterial objSlider
 
             buffers <- makeRectGeo ctx gw gh
 

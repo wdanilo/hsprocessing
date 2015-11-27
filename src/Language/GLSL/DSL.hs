@@ -97,6 +97,7 @@ instance Fractional Expr where
 
 instance Num Expr where
     fromInteger = IntConstant Decimal . fromInteger
+    negate a = "-" [a]
     (*) = mul
     (+) = add
     (-) = sub

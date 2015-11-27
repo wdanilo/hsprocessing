@@ -212,34 +212,48 @@ instance IsUniformID AA where reprID _ = "aa"
 instance Convertible a Expr => Convertible (Color RGBA a) Expr where
     convert (view wrapped -> c) = "vec4" [ convert $ c ^. A.x, convert $ c ^. A.y, convert $ c ^. A.z, convert $ c ^. A.w ]
 
-instance MonadGLSL m => GLSLBuilder (Object 2) m (Uniform2 AA) where
+instance MonadGLSL m => GLSLBuilder (Object 2) m (Uniform2 AA, Expr) where
     toGLSL (Object (O.Object (Shaded (Material layers) (Transformed xform (Bool.Compound (Bool.Expr (Combination (Merge expr1 expr2)))))))) = do
         aa <- newUniform3 AA (0.0 :: Float)
-        toGLSL (Object (O.Object (Shaded (Material layers) (Transformed xform (Bool.Compound expr1)))))
+        (u1, sdfName1) <- toGLSL (Object (O.Object (Shaded (Material layers) (Transformed xform (Bool.Compound expr1)))))
         s1 <- getState
-        toGLSL (Object (O.Object (Shaded (Material layers) (Transformed xform (Bool.Compound expr2)))))
+        (u2, sdfName2) <- toGLSL (Object (O.Object (Shaded (Material layers) (Transformed xform (Bool.Compound expr2)))))
         s2 <- getState
 
-        -- should use sdf merge instead
+        color <- getColor
+        gMerged <- newName "sdf"
 
-        let newAST = (s1 ^. glslAST) <> (s2 ^. glslAST)
+        let rest = [ val float gMerged $ "sdf_merge" [ sdfName1, sdfName2 ]
+                   , color .= "vec4" [0.1, 0.1, 0.1, 0.0]
+                   ]
+
+        gExpr <- (rest <>) . snd <$> drawLayers gMerged color layers
+
+        let newAST = (s1 ^. glslAST) <> (s2 ^. glslAST) <> compound gExpr
 
         setTUnit newAST
-        return (aa)
+        return (aa, gMerged)
 
     toGLSL (Object (O.Object (Shaded (Material layers) (Transformed xform (Bool.Compound (Bool.Expr (Combination (Diff expr1 expr2)))))))) = do
         aa <- newUniform3 AA (0.0 :: Float)
-        toGLSL (Object (O.Object (Shaded (Material layers) (Transformed xform (Bool.Compound expr1)))))
+        (u1, sdfName1) <- toGLSL (Object (O.Object (Shaded (Material layers) (Transformed xform (Bool.Compound expr1)))))
         s1 <- getState
-        toGLSL (Object (O.Object (Shaded (Material layers) (Transformed xform (Bool.Compound expr2)))))
+        (u2, sdfName2) <- toGLSL (Object (O.Object (Shaded (Material layers) (Transformed xform (Bool.Compound expr2)))))
         s2 <- getState
 
-        -- should use sdf diff instead
+        color <- getColor
+        gDiffed <- newName "sdf"
 
-        let newAST = (s1 ^. glslAST) <> (s2 ^. glslAST)
+        let rest = [ val float gDiffed $ "sdf_subtract" [ sdfName1, sdfName2 ]
+                   , color .= "vec4" [0.1, 0.1, 0.1, 0.0]
+                   ]
+
+        gExpr <- (rest <>) . snd <$> drawLayers gDiffed color layers
+
+        let newAST = (s1 ^. glslAST) <> (s2 ^. glslAST) <> compound gExpr
 
         setTUnit newAST
-        return (aa)
+        return (aa, gDiffed)
 
     toGLSL (Object (O.Object (Shaded (Material layers) (Transformed xform (Bool.Compound (Bool.Val obj)))))) = do
 
@@ -254,71 +268,67 @@ instance MonadGLSL m => GLSLBuilder (Object 2) m (Uniform2 AA) where
         --aa <- newUniform "aa" (0.0 :: Float)
         aa <- newUniform3 AA (0.0 :: Float)
 
-
-        let drawPattern = \case
-                Solid c -> do
-                    fill <- newName "fill"
-                    return (fill, [ val vec4 fill $ convert c ])
-
-            processLayer = \case
-                Fill pattern -> do
-                    let gtrans g = return (g,[])
-                        gdraw g = do
-                            (fill, glsl) <- drawPattern pattern
-                            return $ glsl
-                                  <> [ color .= "vec4" ["mix" [color .> "rgb", fill .> "rgb", "sdf_aa"[g] * (fill .> "a") ], 1.0]
-                                     ]
-                    return (gtrans, gdraw)
-
-                Border rad pattern -> do
-                    let gtrans s = do
-                            ng     <- newName "sdf"
-                            return (ng, [val float ng $ "sdf_grow" [convert rad, s]])
-                        gdraw s = do
-                            (fill, glsl) <- drawPattern pattern
-                            ng     <- newName "sdf"
-                            return $ glsl
-                                  <> [ val float ng      $ "sdf_borderOut" [convert rad, s]
-                                     , color .= "vec4" ["mix" [color .> "rgb", fill .> "rgb", "sdf_aa"[ng] * (fill .> "a") ], 1.0]
-                                     ]
-                    return (gtrans, gdraw)
-
-                Shadow rad exp pattern -> do
-                    shadow <- newName "shadow"
-                    let gtrans g = return (g,[])
-                        gdraw g = do
-                                (fill, glsl) <- drawPattern pattern
-                                return $ glsl
-                                      <> [ val float shadow $ "sdf_shadow" [g, convert rad, convert exp]
-                                         , color .= "vec4" ["mix" [color .> "rgb", fill .> "rgb", shadow], 1.0]
-                                         ]
-                    return (gtrans, gdraw)
-
-
-            drawLayers g []     = return (g,[])
-            drawLayers g (l:ls) = do
-                (gtrans , gdraw)  <- processLayer l
-                (g',  glslGTrans) <- gtrans g
-                (g'', glslBgrnd ) <- drawLayers g' ls
-                glslLayer         <- gdraw g
-                return (g'', glslGTrans <> glslBgrnd <> glslLayer)
-
         let rest = [ val float gstart $ runSDF sdf p
-                   -- , color .= "vec4" [0.1,0.1,0.1,0.0]
-                   ] -- <> if funName == "main" then [color .= "vec4" [0.1,0.1,0.1,0.0]] else []
+                   , color .= "vec4" [0.1, 0.1, 0.1, 0.0]
+                   ]
 
         xformV <- newName "xform"
         let transl = [ val mat4 xformV $ convert xform
-                     , "p" .= "appTrans2D" ["p", xformV]
+                     , "p" .= "appTrans2D" [ "p", xformV ]
                      ]
 
-        gExpr <- (rest <>) . snd <$> drawLayers gstart layers
+        gExpr <- (rest <>) . snd <$> drawLayers gstart color layers
 
         let u = compound $ transl <> gExpr
         setTUnit u
-        return (aa)
+        return (aa, gstart)
 
 
+drawLayers g color []     = return (g,[])
+drawLayers g color (l:ls) = do
+    let drawPattern = \case
+            Solid c -> do
+                fill <- newName "fill"
+                return (fill, [ val vec4 fill $ convert c ])
+
+        processLayer = \case
+            Fill pattern -> do
+                let gtrans g = return (g,[])
+                    gdraw g = do
+                        (fill, glsl) <- drawPattern pattern
+                        return $ glsl
+                              <> [ color .= "vec4" ["mix" [color .> "rgb", fill .> "rgb", "sdf_aa"[g] * (fill .> "a") ], 1.0]
+                                 ]
+                return (gtrans, gdraw)
+
+            Border rad pattern -> do
+                let gtrans s = do
+                        ng     <- newName "sdf"
+                        return (ng, [val float ng $ "sdf_grow" [convert rad, s]])
+                    gdraw s = do
+                        (fill, glsl) <- drawPattern pattern
+                        ng     <- newName "sdf"
+                        return $ glsl
+                              <> [ val float ng      $ "sdf_borderOut" [convert rad, s]
+                                 , color .= "vec4" ["mix" [color .> "rgb", fill .> "rgb", "sdf_aa"[ng] * (fill .> "a") ], 1.0]
+                                 ]
+                return (gtrans, gdraw)
+
+            Shadow rad exp pattern -> do
+                shadow <- newName "shadow"
+                let gtrans g = return (g,[])
+                    gdraw g = do
+                            (fill, glsl) <- drawPattern pattern
+                            return $ glsl
+                                  <> [ val float shadow $ "sdf_shadow" [g, convert rad, convert exp]
+                                     , color .= "vec4" ["mix" [color .> "rgb", fill .> "rgb", shadow], 1.0]
+                                     ]
+                return (gtrans, gdraw)
+    (gtrans , gdraw)  <- processLayer l
+    (g',  glslGTrans) <- gtrans g
+    (g'', glslBgrnd ) <- drawLayers g' color ls
+    glslLayer         <- gdraw g
+    return (g'', glslGTrans <> glslBgrnd <> glslLayer)
 
 -- Right
 --  (TranslationUnit
@@ -362,9 +372,11 @@ instance MonadGLSL m => GLSLBuilder (Object 2) m (Uniform2 AA) where
 
 runBuilder a = (shader_header <> ufsGLSL <> sdf_utils <> prettyShow glsl, u) where
     (u, s)    = runState a (mempty :: GLSLState)
+    color     = s ^. stdUniforms . colorx
     ast       = unit [ func' "main" [ param void ] $ compound [ val vec3 "local"  $ "world" - "origin"
                                                      , val vec3 "ulocal" $ "local" * "dpr"
                                                      , val vec2 "p"      $ ("ulocal" .> "xy")
+                                                     , color .= "vec4" [0.1,0.1,0.1,0.0]
                                                      ] <> (s ^. glslAST)
                      ]
     glsl      = ast
