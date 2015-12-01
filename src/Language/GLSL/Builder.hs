@@ -213,7 +213,7 @@ instance Convertible a Expr => Convertible (Color RGBA a) Expr where
     convert (view wrapped -> c) = "vec4" [ convert $ c ^. A.x, convert $ c ^. A.y, convert $ c ^. A.z, convert $ c ^. A.w ]
 
 instance MonadGLSL m => GLSLBuilder (Object 2) m (Uniform2 AA, Expr) where
-    toGLSL (Object (O.Object (Shaded (Material layers) (Transformed xform (Bool.Compound (Bool.Expr (Combination (Merge expr1 expr2)))))))) = do
+    toGLSL (Object (O.Object (Shaded (Material layers) (Transformed xform (Bool.Compound (Bool.Expr (Merge expr1 expr2))))))) = do
         aa <- newUniform3 AA (0.0 :: Float)
         (u1, sdfName1) <- toGLSL (Object (O.Object (Shaded (Material layers) (Transformed xform (Bool.Compound expr1)))))
         s1 <- getState
@@ -234,7 +234,7 @@ instance MonadGLSL m => GLSLBuilder (Object 2) m (Uniform2 AA, Expr) where
         setTUnit newAST
         return (aa, gMerged)
 
-    toGLSL (Object (O.Object (Shaded (Material layers) (Transformed xform (Bool.Compound (Bool.Expr (Combination (Diff expr1 expr2)))))))) = do
+    toGLSL (Object (O.Object (Shaded (Material layers) (Transformed xform (Bool.Compound (Bool.Expr (Diff expr1 expr2))))))) = do
         aa <- newUniform3 AA (0.0 :: Float)
         (u1, sdfName1) <- toGLSL (Object (O.Object (Shaded (Material layers) (Transformed xform (Bool.Compound expr1)))))
         s1 <- getState
@@ -257,7 +257,10 @@ instance MonadGLSL m => GLSLBuilder (Object 2) m (Uniform2 AA, Expr) where
 
     toGLSL (Object (O.Object (Shaded (Material layers) (Transformed xform (Bool.Compound (Bool.Val obj)))))) = do
 
-        let sdf = convert obj :: SDF 2 Expr
+        -- let sdf = convert obj :: SDF 2 Expr
+        let sdf = obj
+            -- uu :: _
+            -- uu = obj
 
         p      <- getPosition
 

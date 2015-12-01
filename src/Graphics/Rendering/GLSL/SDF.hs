@@ -7,7 +7,7 @@ import Prologue
 
 import           Data.Array.Linear
 import           Language.GLSL.Syntax      (Expr)
-import           Math.Algebra.Boolean      (Compound(..), Combination(..))
+import           Math.Algebra.Boolean      (Compound(..))
 import qualified Math.Algebra.Boolean      as Bool
 import           Math.Space.Dimension      (DimOf)
 import           Math.Space.Metric.SDF     (SDF)
@@ -39,6 +39,9 @@ instance HasMaterial (Object dim) where material = wrapped . material
 object :: SDF n Expr -> Object n
 object = Object . Display.Object . Shaded def . Transformed mempty . Compound . Bool.Val
 
+-- object2 :: SDF n Expr -> Object n
+-- object2 = Object . Display.Object . Shaded def . Transformed mempty . Compound . Simple
+
 translate :: Vector 3 Boxed Expr -> Object n -> Object n
 translate v (Object (Display.Object (Shaded material (Transformed _ comp)))) =
     (Object (Display.Object (Shaded material (Transformed xform comp)))) where
@@ -47,12 +50,12 @@ translate v (Object (Display.Object (Shaded material (Transformed _ comp)))) =
 diff :: Object n -> Object n -> Object n
 diff (Object (Display.Object (Shaded material1 (Transformed xform1 (Compound expr1)))))
      (Object (Display.Object (Shaded material2 (Transformed xform2 (Compound expr2))))) =
-        (Object (Display.Object (Shaded material1 (Transformed xform1 (Compound (Bool.Expr (Combination (Bool.Diff expr1 expr2))))))))
+        (Object (Display.Object (Shaded material1 (Transformed xform1 (Compound (Bool.Expr (Bool.Diff expr1 expr2)))))))
 
 merge :: Object n -> Object n -> Object n
 merge (Object (Display.Object (Shaded material1 (Transformed xform1 (Compound expr1)))))
       (Object (Display.Object (Shaded material2 (Transformed xform2 (Compound expr2))))) =
-        (Object (Display.Object (Shaded material1 (Transformed xform1 (Compound (Bool.Expr (Combination (Bool.Merge expr1 expr2))))))))
+        (Object (Display.Object (Shaded material1 (Transformed xform1 (Compound (Bool.Expr (Bool.Merge expr1 expr2)))))))
 
 -- === External instances ===
 
