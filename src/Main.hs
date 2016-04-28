@@ -166,6 +166,8 @@ mySlider = Bounded (A.vec2 400 400) (merge (mySliderL ^. bounded) (mySliderR ^. 
 
 
 main = do
+    putStrLn "HSProcessing test started."
+
     let objBall = myBall
         [gw', gh'] = toList $ objBall ^. bounds
         gw = gw'/2;
@@ -198,7 +200,7 @@ main = do
         runjs $ do
             ctx     <- initCanvas
 
-            GLSL.Program jsProg aa <- GLSL.compileMaterial objSlider
+            GLSL.Program jsProg aa <- GLSL.compileMaterial objBall
 
             buffers <- makeRectGeo ctx gw gh
 
@@ -219,6 +221,8 @@ main = do
 
 
     putStrLn $ ppShow $ Parsec.runParser GLSL.translationUnit GLSL.S "shader parser" shader_t5
+
+    putStrLn "HSProcessing test finished."
 
 
 --zrobic datatype Program ktory bedzie wrapperem na RTuple uniformow, kotra bedziemy mogli adresowac lensami

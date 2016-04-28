@@ -1,4 +1,4 @@
-name:                nodelab
+name:                hsprocessing
 version:             0.1.0.0
 synopsis:            NodeLab
 homepage:            www.nodelab.io
@@ -8,7 +8,7 @@ category:            drag and drop test, all reactive
 build-type:          Simple
 cabal-version:       >=1.22
 
-executable nodelab
+executable hsprocessing
   main-is:            Main.hs
   default-extensions: NoImplicitPrelude
                       DoAndIfThenElse
@@ -45,6 +45,7 @@ executable nodelab
                      Graphics.Rendering.GLSL.SDF
                      Graphics.Rendering.GLSL.SDF.Utils
                      Graphics.Rendering.GLSL.SDF.Figures
+                     Graphics.Rendering.WebGL
                      Graphics.Shading.Flat
                      Graphics.Shading.Material
                      Graphics.Shading.Pattern
