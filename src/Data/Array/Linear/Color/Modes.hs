@@ -6,10 +6,14 @@
 
 module Data.Array.Linear.Color.Modes where
 
-import  Prologue
-import  Data.Array.Linear
-import  Data.Array.Linear.Color.Class
-import  Constraint.Container.Homo     (Homo)
+import Prologue -- hiding (FromListUnsafe, fromListUnsafe, Item, ToList, FromList, toList, fromList)
+import Data.Array.Linear
+import Data.Array.Linear.Color.Class
+import Constraint.Container.Homo     (Homo)
+import Data.Repr.Meta                (MetaRepr, Meta, as')
+
+-- import Data.List.Class
+
 
 -- === Color types ===
 
@@ -18,10 +22,10 @@ data RGBA
 data HSV
 data HSVA
 
-newtype instance Color RGB  a = RGB  (BVec 3 a) deriving (Show, Functor, Foldable, Traversable) 
-newtype instance Color HSV  a = HSV  (BVec 3 a) deriving (Show, Functor, Foldable, Traversable) 
-newtype instance Color RGBA a = RGBA (BVec 4 a) deriving (Show, Functor, Foldable, Traversable) 
-newtype instance Color HSVA a = HSVA (BVec 4 a) deriving (Show, Functor, Foldable, Traversable) 
+newtype instance Color RGB  a = RGB  (BVec 3 a) deriving (Show, Functor, Foldable, Traversable)
+newtype instance Color HSV  a = HSV  (BVec 3 a) deriving (Show, Functor, Foldable, Traversable)
+newtype instance Color RGBA a = RGBA (BVec 4 a) deriving (Show, Functor, Foldable, Traversable)
+newtype instance Color HSVA a = HSVA (BVec 4 a) deriving (Show, Functor, Foldable, Traversable)
 
 
 -- === Constructors ===

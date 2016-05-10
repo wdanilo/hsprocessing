@@ -17,7 +17,9 @@ import qualified Data.Vector.Mutable     as MV
 
 import           Prelude  ()
 import qualified Prologue as P
-import           Prologue hiding ((*), (+), sum)
+import           Prologue hiding ((*), (+), sum) -- , FromListUnsafe, fromListUnsafe, Item, ToList, FromList, toList, fromList, IsList)
+-- import Data.List.Class
+
 
 import Data.Convert
 import Data.Monoid (Sum(Sum), getSum)

@@ -9,19 +9,28 @@ setup-info:
 packages:
   - .
   - location:
-      git:    https://github.com/wdanilo/jsaddle.git
-      commit: 073347ddd698e4c7b45addc17edd29c086f0fb96
-  - location:
       git:    https://github.com/wdanilo/prologue.git
-      commit: 48c846701e796d28734f96524ba1e0b36cce57c0
+      # commit: 9ba882921b6e2527923bbb0f9ba54c41b43a8135  # 1.0.6
+      commit: 48c846701e796d28734f96524ba1e0b36cce57c0  # 1.0.2
   - location:
       git:    https://github.com/wdanilo/data-repr.git
       commit: a725e4dad9b0916514662e917cef692a91a51029
   - location:
       git:    https://github.com/wdanilo/typelevel.git
       commit: 9b3353e5eac53a1733da872edb68c23c0a3a6bf4
+  # - location:
+  #     git: https://github.com/wdanilo/container.git
+  #     commit: cd137cdfa6059cc267aa865d78bbbf0a17a4c657
+  #   extra-dep: true
 
 extra-deps:
+  # - OneTuple-0.2.1
+  # - data-construction-1.1
+  # - container-1.0.2
+  # - data-layer-1.0.4
+  # - functor-utils-1.1
+  # - lens-utils-1.2
+  # - tuple-0.3.0.2
   - prologue-1.0.1
   - convert-1.0
   - typelevel-1.0.2
@@ -49,7 +58,7 @@ extra-deps:
   - tagged-0.8.1
   - transformers-compat-0.4.0.4
   - void-0.7.1
-  - jsaddle-0.2.2.0
+  # - jsaddle-0.2.2.0
   - algebraic-0.1.1
   - transformers-base-0.4.4
   - data-default-0.5.3

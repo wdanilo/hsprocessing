@@ -5,7 +5,8 @@
 
 module Data.Array.Linear.Color.Class where
 
-import Prologue
+import Prologue -- hiding (FromListUnsafe, fromListUnsafe, Item, ToList, FromList, toList, fromList)
+-- import Data.List.Class
 
 
 -- === Color type ===
@@ -15,7 +16,7 @@ type instance Item (Color t a) = a
 
 class IsColor repr t a | repr -> a where
     color :: repr -> Color t a
-    
+
 
 -- === Utilities ==
 
