@@ -12,48 +12,44 @@
 
 module Language.GLSL.Builder where
 
-import           Prelude                        ()
-import           Prologue                       hiding (Bounded, div, (.>), (.=), void)
-import           Language.GLSL                  ()
-import           Language.GLSL.Syntax           hiding (Uniform)
-import           Text.PrettyPrint.HughesPJClass (prettyShow, Pretty)
-import           Data.String                    (IsString, fromString)
-import qualified Data.Char as Char
-import           Data.Convert
-import           GHC.TypeLits                   (Nat)
-import qualified Control.Monad.State           as State
-import           GHC.TypeLits
-import           Control.Monad.State           (State, runState, evalState, execState, get, put)
+import           Control.Monad.State                (State, evalState,
+                                                     execState, get, put,
+                                                     runState)
+import qualified Control.Monad.State                as State
+import           Data.Array.Linear                  (Transformed (..))
+import qualified Data.Array.Linear                  as A
+import           Data.Array.Linear.Color.Attrs.RGBA
 import           Data.Array.Linear.Color.Class
 import           Data.Array.Linear.Color.Modes
-import           Data.Array.Linear.Color.Attrs.RGBA
-import           Math.Space.Metric.Bounded          (Bounded(..))
-import qualified Data.Vector as V
+import qualified Data.Char                          as Char
+import           Data.Convert
+import           Data.RTuple
+import           Data.String                        (IsString, fromString)
+import qualified Data.Vector                        as V
+import           GHC.TypeLits                       (Nat)
+import           GHC.TypeLits
+-- import           GHCJS.Types                        (JSRef)
+import qualified Graphics.Display.Object            as O
+import           Graphics.Rendering.GLSL.SDF
+import           Graphics.Rendering.GLSL.SDF.Utils  (sdf_utils, shader_header)
+-- import           Graphics.Rendering.WebGL           (compileShader)
+import           Graphics.Shading.Flat
+import           Graphics.Shading.Material
+import           Graphics.Shading.Pattern
+import           Language.GLSL                      ()
+import           Language.GLSL.DSL
+import           Language.GLSL.Syntax               hiding (Uniform)
+import           Math.Algebra.Boolean               hiding (Compound, Expr)
+import qualified Math.Algebra.Boolean               as Bool
+import           Math.Space.Dimension               (Dim (..), DimOf)
+import           Math.Space.Metric.Bounded          (Bounded (..))
+import           Math.Space.Metric.SDF
+import           Math.Topology.Geometry.Figures
+import           Prelude                            ()
+import           Prologue                           hiding (Bounded, div, void,
+                                                     (.=), (.>))
+import           Text.PrettyPrint.HughesPJClass     (Pretty, prettyShow)
 
-import qualified Data.Array.Linear as A
-import           Data.Array.Linear (Transformed(..))
-
-import Data.RTuple
-
-import Language.GLSL.DSL
-
-import Math.Algebra.Boolean hiding (Expr, Compound)
-import qualified Math.Algebra.Boolean as Bool
-import Math.Space.Metric.SDF
-import Math.Topology.Geometry.Figures
-import Math.Space.Dimension (Dim(..), DimOf)
-import Graphics.Shading.Material
-import Graphics.Shading.Flat
-import Graphics.Shading.Pattern
-import Graphics.Rendering.GLSL.SDF
-
-import qualified Graphics.Display.Object as O
-
-import Graphics.Rendering.WebGL (compileShader)
-
-import Graphics.Rendering.GLSL.SDF.Utils (shader_header, sdf_utils)
-
-import           GHCJS.Types         (JSRef)
 
 
 
@@ -131,7 +127,6 @@ instance Monoid Compound where
 
 --newtype ProgramDesc   unis = ProgramDesc TranslationUnit deriving (Show)
 data   Program t unis = Program t unis
-type JSProgram        = Program JSRef
 
 
 -- === GLSL Builder ===
@@ -190,13 +185,12 @@ newUniform3 t a = do
     withState $ uniforms .~ [UniformDecl "dupa" (toDecl2 uni)]
     return uni
 
-compileMaterial :: (MonadIO m, GLSLBuilder t (State GLSLState) u) => t -> m (JSProgram u)
-compileMaterial obj = do
+compileGLSL :: (MonadIO m, GLSLBuilder t (State GLSLState) u) => t -> m (String, u)
+compileGLSL obj = do
     let (glsl, u) = runBuilder $ toGLSL obj
     putStrLn "GENERATED:"
     putStrLn glsl
-    flip Program u <$> compileShader glsl
-
+    return (glsl, u)
 
 setTUnit a = withState $ glslAST .~ a
 

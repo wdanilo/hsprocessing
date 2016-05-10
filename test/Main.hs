@@ -5,89 +5,34 @@
 {-# LANGUAGE ViewPatterns #-}
 
 
-import           Prelude()
-import           Prologue            hiding (Bounded)
-import           Data.JSString.Text  (lazyTextToJSString)
-import           Data.JSString       (unpack, pack, JSString)
-import           GHCJS.DOM           (runWebGUI, postGUISync, postGUIAsync, webViewGetDomDocument)
-import           GHCJS.DOM.Types     (Element)
-import           GHCJS.Types         (JSRef)
-import           GHCJS.Marshal       (ToJSRef(..))
-import           GHCJS.Marshal.Pure  (PToJSRef(..))
-import Language.Javascript.JSaddle
-       (strToText, valToStr, JSNull(..), deRefVal, valToObject, js, JSF(..), js0, js1, js2, js3, js4, js5, jsg,
-        valToNumber, (!), (!!), (#), (<#), global, eval, fun, val, array, new, runJSaddle_,
-        valToText, MakeValueRef(..), JSValue(..), call, JSM(..), JSValueRef, jsf)
-import Language.Javascript.JSaddle.Types (castRef)
-import Language.Javascript.JSaddle.Classes (MakeObjectRef)
-
-import Control.Lens
-import Control.Monad.IO.Class
-
-import qualified Language.GLSL as GLSL
-import qualified Language.GLSL.DSL as GLSLDSL
-import qualified Text.Parsec   as Parsec
-
-import Text.PrettyPrint.HughesPJClass (prettyShow, Pretty)
-
-import qualified Language.GLSL.Builder as GLSL
-import qualified Language.Javascript.JSaddle.String as JS
-
-import Data.Convert
+import           Control.Concurrent                  (threadDelay)
+import           Control.Lens
+import           Control.Monad.IO.Class
+import           Control.Monad.State
+import qualified Data.Array.Linear                   as A
 import           Data.Array.Linear.Color.Class
 import           Data.Array.Linear.Color.Modes
-import qualified Data.Array.Linear as A
-
-import Data.Fixed (mod')
-
-import Control.Monad.State
-
-import Math.Space.Metric.Bounded
-import Math.Space.Dimension (Dim)
-import Math.Space.Metric.SDF
-import Graphics.Shading.Material
-import Graphics.Shading.Flat
-import Graphics.Shading.Pattern
-import qualified Graphics.Display.Object as O
-import Graphics.Rendering.GLSL.SDF (object, Object, translate, diff, merge)
-import Graphics.Rendering.GLSL.SDF.Figures
-
-import Graphics.Rendering.WebGL
-
-
-
-
-import Control.Concurrent (threadDelay)
+import           Data.Convert
+import           Data.Fixed                          (mod')
+import qualified Graphics.Display.Object             as O
+import           Graphics.Rendering.GLSL.SDF         (Object, diff, merge,
+                                                      object, translate)
+import           Graphics.Rendering.GLSL.SDF.Figures
+import           Graphics.Shading.Flat
+import           Graphics.Shading.Material
+import           Graphics.Shading.Pattern
+import qualified Language.GLSL                       as GLSL
+import qualified Language.GLSL.Builder               as GLSL
+import qualified Language.GLSL.DSL                   as GLSLDSL
+import           Math.Space.Dimension                (Dim)
+import           Math.Space.Metric.Bounded
+import           Math.Space.Metric.SDF
+import           Prelude                             ()
+import           Prologue                            hiding (Bounded)
+import qualified Text.Parsec                         as Parsec
+import           Text.PrettyPrint.HughesPJClass      (Pretty, prettyShow)
 
 
-
-
-
-
-
-
-
-
-
-
-
-
----------------------
--- === Example === --
----------------------
-
-data BSize = BSize deriving (Show)
-type instance GLSL.UniformType BSize = Float
-instance GLSL.IsUniformID BSize where reprID _ = "bsize"
-
-data BRad = BRad deriving (Show)
-type instance GLSL.UniformType BRad = Float
-instance GLSL.IsUniformID BRad where reprID _ = "brad"
-
-
---myBall2 = do
---    bsize <- GLSL.newUniform2 BSize 10.0
---    brad  <- GLSL.newUniform2 BRad  10.0
 
 
 mtl      = Material $ [ Fill            . Solid $ color4 0.7 0.2 0.2 1.0
@@ -100,7 +45,6 @@ mtl2     = Material $ [ Fill            . Solid $ color4 0.6 0.6 0.6 1.0
 
 mtl3     = Material $ [ Fill            . Solid $ color4 0.3 0.3 0.3 1.0
                       ] :: Material (Layer GLSL.Expr)
-
 
 
 --Material [AA, BSize] Expr
@@ -194,74 +138,6 @@ main = do
         gh = gh'/2;
 
 
-    runWebGUI $ \ webView -> do
-        let runjs = postGUIAsync . runJSaddle_ webView
-
-        runjs $ do
-            ctx     <- initCanvas
-
-            GLSL.Program jsProg aa <- GLSL.compileMaterial objBall
-
-            buffers <- makeRectGeo ctx gw gh
-
-            clearScene ctx
-
-            drawObject ctx buffers jsProg gw gh
-
-            --liftIO $ threadDelay 100000
-
-            --clearScene ctx
-
-            --liftIO $ threadDelay 100000
-
-            --clearScene ctx
-
-            --drawObject ctx buffers program gw gh
-
-
-
-    putStrLn $ ppShow $ Parsec.runParser GLSL.translationUnit GLSL.S "shader parser" shader_t5
+    GLSL.compileGLSL objBall
 
     putStrLn "HSProcessing test finished."
-
-
---zrobic datatype Program ktory bedzie wrapperem na RTuple uniformow, kotra bedziemy mogli adresowac lensami
---kazdy uniform ma osobny typ wtedy
-
-
-
-
-fromRight = \case
-    Right r -> r
-    Left  e -> error (show e)
-
-
-
-
-
-
-shader_t1 :: String
-shader_t1 = [s|uniform float aa = 1.0; |]
-
-shader_t2 :: String
-shader_t2 = [s|vec2 v = vec2(2.0, 3.0); |]
-
-shader_t3 :: String
-shader_t3 = [s|void main(void) { vec2 a = vec2(2.0, 3.0); } |]
-
-shader_t4 :: String
-shader_t4 = [s|void main(void) { float a = 1.0; fun1(); fun2(); x = fun3(); } |]
-
-shader_t5 :: String
-shader_t5 = [s|float a = 1.0; fun1(); fun2(); x = fun3();|]
-
-
--- | To parse shader and see its representation use:
--- | `putStrLn $ ppShow $ Parsec.runParser GLSL.translationUnit GLSL.S "shader parser" shader`
-
-
-type Type = String
-type Name = String
-
-data Decl    = Function Name [ArgDecl] deriving (Show)
-data ArgDecl = ArgDecl Type Name       deriving (Show)
