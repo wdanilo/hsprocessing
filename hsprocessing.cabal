@@ -48,6 +48,8 @@ library
         Data.Array.Linear.Color.Modes,
         Data.Array.Linear.Properties,
         Data.List.Class,
+        Graphics.API.Shapes,
+        Graphics.API.Transformations,
         Graphics.Display.Object,
         Graphics.Rendering.GLSL.SDF,
         Graphics.Rendering.GLSL.SDF.Figures,
@@ -86,6 +88,7 @@ library
                      , data-repr
                      , typelevel
                      , split
+                     , binary
   default-language:    Haskell2010
 
 executable hsprocessing-test
