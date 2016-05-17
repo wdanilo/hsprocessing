@@ -48,7 +48,6 @@ library
                      , data-repr
                      , typelevel
                      , split
-                     , binary
   default-language:    Haskell2010
 
 executable hsprocessing-test
