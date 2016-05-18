@@ -138,6 +138,7 @@ main = do
         gh = gh'/2;
 
 
-    GLSL.compileGLSL objBall
+    let (str, u) = GLSL.compileGLSL objBall
+    putStrLn str
 
     putStrLn "HSProcessing test finished."

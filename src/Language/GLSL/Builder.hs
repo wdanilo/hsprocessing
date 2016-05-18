@@ -185,12 +185,8 @@ newUniform3 t a = do
     withState $ uniforms .~ [UniformDecl "dupa" (toDecl2 uni)]
     return uni
 
-compileGLSL :: (MonadIO m, GLSLBuilder t (State GLSLState) u) => t -> m (String, u)
-compileGLSL obj = do
-    let (glsl, u) = runBuilder $ toGLSL obj
-    putStrLn "GENERATED:"
-    putStrLn glsl
-    return (glsl, u)
+compileGLSL :: GLSLBuilder t (State GLSLState) u => t -> (String, u)
+compileGLSL = runBuilder . toGLSL
 
 setTUnit a = withState $ glslAST .~ a
 

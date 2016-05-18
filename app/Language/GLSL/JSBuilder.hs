@@ -11,5 +11,5 @@ type JSProgram        = Program JSRef
 
 compileMaterial :: (MonadIO m, GLSLBuilder t (State GLSLState) u) => t -> m (JSProgram u)
 compileMaterial obj = do
-    (glsl, u) <- compileGLSL obj
+    let (glsl, u) = compileGLSL obj
     flip Program u <$> compileShader glsl
