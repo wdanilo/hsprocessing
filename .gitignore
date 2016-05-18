@@ -61,6 +61,8 @@ libs/*/*/*/*.cabal
 tools/*/*.cabal
 tools/*/*/*.cabal
 tools/*/*/*/*.cabal
+*.cabal
+*.tcabal
 
 #general builds
 dist
