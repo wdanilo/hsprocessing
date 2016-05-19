@@ -3,17 +3,12 @@ module Graphics.Rendering.GLSL.SDF.Utils where
 import Prologue
 
 shader_header :: String
-shader_header = [s|#extension GL_OES_standard_derivatives : enable
-
+shader_header = [s|
     precision mediump float;
 
-    uniform vec2 dim;
-    uniform vec3 origin;
     uniform float dpr;
-
-    varying vec4 vColor;
-    varying vec3 world;
-    varying vec2 uv;
+    varying vec2 size;
+    varying vec2 luv;
 |]
 
     --uniform float aa;

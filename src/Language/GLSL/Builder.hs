@@ -366,11 +366,11 @@ drawLayers g color (l:ls) = do
 runBuilder a = (shader_header <> ufsGLSL <> sdf_utils <> prettyShow glsl, u) where
     (u, s)    = runState a (mempty :: GLSLState)
     color     = s ^. stdUniforms . colorx
-    ast       = unit [ func' "main" [ param void ] $ compound [ val vec3 "local"  $ "world" - "origin"
-                                                     , val vec3 "ulocal" $ "local" * "dpr"
-                                                     , val vec2 "p"      $ ("ulocal" .> "xy")
-                                                     , color .= "vec4" [0.1,0.1,0.1,0.0]
-                                                     ] <> (s ^. glslAST)
+    ast       = unit [ func' "main" [ param void ] $ compound [ val vec2 "local"  $ "luv" * "size"
+                                                              , val vec2 "ulocal" $ "local" * "dpr"
+                                                              , val vec2 "p"      $ "ulocal" - ("size" / 2.0)
+                                                              , color .= "vec4" [0.1,0.1,0.1,0.0]
+                                                              ] <> (s ^. glslAST)
                      ]
     glsl      = ast
     ufs       = s ^. uniforms
