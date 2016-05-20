@@ -235,4 +235,11 @@ sdf_utils = [s|
     vec3 smoothMerge (float d1, float d2, vec3 c1, vec3 c2, float width) {
         return mix (c1,c2,bismooth(clamp((d1-d2+2.0*width)/(4.0*width)),2.0));
     }
+
+    vec4 blend(vec4 dst, vec4 src) {
+        dst.a += 0.000001; // avoid divide by zero
+        float alpha = src.a + dst.a*(1.0-src.a);
+        vec3 outcol = 1.0/alpha * (src.xyz * src.a + dst.xyz * dst.a * (1.0 - src.a));
+        return vec4(outcol, alpha);
+    }
 |]

@@ -290,8 +290,10 @@ drawLayers g color (l:ls) = do
                     gdraw g = do
                         (fill, glsl) <- drawPattern pattern
                         return $ glsl
-                              <> [ color .= "vec4" ["mix" [color .> "rgb", fill .> "rgb", "sdf_aa"[g] * (fill .> "a") ], 1.0]
+                              <> [ color .= "blend" [color, "vec4" [fill .> "rgb", "sdf_aa"[g] * (fill .> "a") ]]
                                  ]
+                              -- <> [ color .= "vec4" ["mix" [color .> "rgb", fill .> "rgb", "sdf_aa"[g] * (fill .> "a") ], 1.0]
+                              --    ]
                 return (gtrans, gdraw)
 
             Border rad pattern -> do
