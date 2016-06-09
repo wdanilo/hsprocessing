@@ -245,6 +245,27 @@ instance MonadGLSL m => GLSLBuilder (Object 2) m (Uniform2 AA, Expr) where
         setTUnit newAST
         return (aa, gDiffed)
 
+    toGLSL (Object (O.Object (Shaded (Material layers) (Transformed xform (Bool.Compound (Bool.Expr (Intersect expr1 expr2))))))) = do
+        aa <- newUniform3 AA (0.0 :: Float)
+        (u1, sdfName1) <- toGLSL (Object (O.Object (Shaded (Material layers) (Transformed xform (Bool.Compound expr1)))))
+        s1 <- getState
+        (u2, sdfName2) <- toGLSL (Object (O.Object (Shaded (Material layers) (Transformed xform (Bool.Compound expr2)))))
+        s2 <- getState
+
+        color <- getColor
+        gIntersected <- newName "sdf"
+
+        let rest = [ val float gIntersected $ "sdf_intersect" [ sdfName1, sdfName2 ]
+                   , color .= "vec4" [0.1, 0.1, 0.1, 0.0]
+                   ]
+
+        gExpr <- (rest <>) . snd <$> drawLayers gIntersected color layers
+
+        let newAST = (s1 ^. glslAST) <> (s2 ^. glslAST) <> compound gExpr
+
+        setTUnit newAST
+        return (aa, gIntersected)
+
     toGLSL (Object (O.Object (Shaded (Material layers) (Transformed xform (Bool.Compound (Bool.Val obj)))))) = do
 
         -- let sdf = convert obj :: SDF 2 Expr

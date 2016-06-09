@@ -47,15 +47,21 @@ translate v (Object (Display.Object (Shaded material (Transformed _ comp)))) =
     (Object (Display.Object (Shaded material (Transformed xform comp)))) where
         xform = translation v :: BQuaternion Expr
 
+-- TODO: Fix: Redesign solution to address merge materials and xforms (wrap data in different order?)
+merge :: Object n -> Object n -> Object n
+merge (Object (Display.Object (Shaded material1 (Transformed xform1 (Compound expr1)))))
+      (Object (Display.Object (Shaded material2 (Transformed xform2 (Compound expr2))))) =
+        (Object (Display.Object (Shaded material1 (Transformed xform1 (Compound (Bool.Expr (Bool.Merge expr1 expr2)))))))
+
 diff :: Object n -> Object n -> Object n
 diff (Object (Display.Object (Shaded material1 (Transformed xform1 (Compound expr1)))))
      (Object (Display.Object (Shaded material2 (Transformed xform2 (Compound expr2))))) =
         (Object (Display.Object (Shaded material1 (Transformed xform1 (Compound (Bool.Expr (Bool.Diff expr1 expr2)))))))
 
-merge :: Object n -> Object n -> Object n
-merge (Object (Display.Object (Shaded material1 (Transformed xform1 (Compound expr1)))))
+intersect :: Object n -> Object n -> Object n
+intersect (Object (Display.Object (Shaded material1 (Transformed xform1 (Compound expr1)))))
       (Object (Display.Object (Shaded material2 (Transformed xform2 (Compound expr2))))) =
-        (Object (Display.Object (Shaded material1 (Transformed xform1 (Compound (Bool.Expr (Bool.Merge expr1 expr2)))))))
+        (Object (Display.Object (Shaded material1 (Transformed xform1 (Compound (Bool.Expr (Bool.Intersect expr1 expr2)))))))
 
 -- === External instances ===
 

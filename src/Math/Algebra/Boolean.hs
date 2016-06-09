@@ -4,8 +4,9 @@ module Math.Algebra.Boolean where
 import Prologue
 
 
-data Boolean a = Merge a a
-               | Diff  a a
+data Boolean a = Merge     a a
+               | Diff      a a
+               | Intersect a a
                deriving (Show, Functor)
 
 data Expr a = Val a
