@@ -7,7 +7,8 @@ shader_header = [s|
     precision mediump float;
 
     uniform float dpr;
-    varying vec2 size;
+    uniform vec2 boxSize;
+    uniform vec2 boxOffset;
     varying vec2 luv;
 |]
 
