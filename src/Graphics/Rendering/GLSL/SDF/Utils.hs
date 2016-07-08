@@ -42,7 +42,7 @@ sdf_utils = [s|
     }
 
     float sdf_merge     (float d1,   float d2) { return min( d1, d2); }
-    float sdf_subtract  (float d1,   float d2) { return max(-d1, d2); }
+    float sdf_subtract  (float d1,   float d2) { return max(-d2, d1); }
     float sdf_intersect (float d1,   float d2) { return max( d1, d2); }
     float sdf_grow      (float size, float d)  { return d - size; }
     float sdf_shrink    (float size, float d)  { return d + size; }
